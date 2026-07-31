@@ -21,6 +21,9 @@ function BookingForm({ service }) {
         "03:00 PM",
         "05:00 PM"
     ];
+    const platformFee = 49;
+    const gst = Math.round(service.price * 0.18);
+    const totalAmount = service.price + platformFee + gst;
 
     const handleChange = (e) => {
 
@@ -97,6 +100,8 @@ function BookingForm({ service }) {
             state: {
                 bookingId,
                 service,
+                formData,
+                totalAmount,
             },
         });
 
