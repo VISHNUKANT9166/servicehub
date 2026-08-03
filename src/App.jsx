@@ -9,6 +9,9 @@ import BookingSuccess from "./pages/BookingSuccess";
 import Wishlist from "./pages/Wishlist";
 import Profile from "./pages/Profile";
 import BecomeProfessional from "./pages/BecomeProfessional";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
 
 function App() {
   return (
@@ -47,8 +50,15 @@ function App() {
           path="/become-professional"
           element={<BecomeProfessional />}
         />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route
+          path="/forgot-password"
+          element={<ForgotPassword />}
+        />
 
       </Routes>
+
 
 
     </BrowserRouter>

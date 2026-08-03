@@ -1,1 +1,17 @@
 @import "tailwindcss";
+
+/* Hide Microsoft Edge built-in password reveal icon */
+input::-ms-reveal,
+input::-ms-clear {
+    display: none;
+}
+
+/* Hide Edge built-in password reveal button */
+input[type="password"]::-webkit-textfield-decoration-container {
+    display: flex;
+}
+
+/* Hide native reveal icon */
+input[type="password"]::-webkit-credentials-auto-fill-button {
+    display: none !important;
+}
