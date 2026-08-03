@@ -4,6 +4,8 @@ import { useState } from "react";
 import AuthLayout from "../components/Auth/AuthLayout";
 import AuthInput from "../components/Auth/AuthInput";
 import SocialLogin from "../components/Auth/SocialLogin";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 function Login() {
 
@@ -15,6 +17,8 @@ function Login() {
 
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
+    const { login } = useAuth();
+    const navigate = useNavigate();
 
     const handleChange = (e) => {
 
@@ -65,7 +69,14 @@ function Login() {
 
             toast.success("Login Successful!");
 
-            console.log("Login Data:", formData);
+            login({
+                name: "Vishnukant Yadav",
+                email: formData.email,
+            });
+
+            toast.success("Login Successful!");
+
+            navigate("/dashboard");
 
         }, 1500);
 

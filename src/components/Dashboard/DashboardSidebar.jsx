@@ -7,8 +7,13 @@ import {
     Settings,
     LogOut,
 } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
 function DashboardSidebar() {
+    const { logout } = useAuth();
+    const navigate = useNavigate();
 
     const menuItems = [
         {
@@ -69,9 +74,13 @@ function DashboardSidebar() {
             </nav>
 
             <button
-                className="mt-8 w-full flex items-center justify-center gap-2 bg-red-500 text-white py-3 rounded-xl hover:bg-red-600 transition"
+                onClick={() => {
+                    logout();
+                    toast.success("Logged out successfully");
+                    navigate("/login");
+                }}
+                className="..."
             >
-                <LogOut size={20} />
                 Logout
             </button>
 

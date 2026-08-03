@@ -14,6 +14,7 @@ import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
 import EditProfile from "./pages/EditProfile";
+import ProtectedRoute from "./routes/ProtectedRoute";
 
 function App() {
   return (
@@ -60,11 +61,19 @@ function App() {
         />
         <Route
           path="/dashboard"
-          element={<Dashboard />}
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
         />
         <Route
           path="/edit-profile"
-          element={<EditProfile />}
+          element={
+            <ProtectedRoute>
+              <EditProfile />
+            </ProtectedRoute>
+          }
         />
 
       </Routes>
