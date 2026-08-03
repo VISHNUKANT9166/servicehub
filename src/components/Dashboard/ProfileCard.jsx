@@ -1,4 +1,5 @@
 import { User, Mail, Phone, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
 
 function ProfileCard() {
 
@@ -74,11 +75,12 @@ function ProfileCard() {
 
             </div>
 
-            <button
-                className="mt-8 w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition"
+            <Link
+                to="/edit-profile"
+                className="block mt-8 w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition text-center"
             >
                 Edit Profile
-            </button>
+            </Link>
 
         </div>
 

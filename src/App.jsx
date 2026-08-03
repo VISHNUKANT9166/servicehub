@@ -13,6 +13,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
+import EditProfile from "./pages/EditProfile";
 
 function App() {
   return (
@@ -60,6 +61,10 @@ function App() {
         <Route
           path="/dashboard"
           element={<Dashboard />}
+        />
+        <Route
+          path="/edit-profile"
+          element={<EditProfile />}
         />
 
       </Routes>
