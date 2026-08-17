@@ -6,6 +6,12 @@ export const getMyBookings = async () => {
 
     return response.data;
 };
+// Get booking statistics of logged-in user
+export const getBookingStats = async () => {
+    const response = await api.get("/bookings/stats");
+
+    return response.data;
+};
 
 // Create a new booking
 export const createBooking = async (bookingData) => {

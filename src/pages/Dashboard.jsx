@@ -20,15 +20,23 @@ import WishlistPreview from "../components/Dashboard/WishlistPreview";
 import NotificationPanel from "../components/Dashboard/NotificationPanel";
 import ProfileCard from "../components/Dashboard/ProfileCard";
 
-import { getMyBookings } from "../services/bookingService";
-import { getWishlist } from "../services/wishlistService";
+import {
+    getMyBookings,
+    getBookingStats,
+} from "../services/bookingService";
 
 function Dashboard() {
 
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [wishlist, setWishlist] = useState([]);
-    const [wishlistLoading, setWishlistLoading] = useState(true);
+    const [wishlistCount, setWishlistCount] = useState(0);
+    const [bookingStats, setBookingStats] = useState({
+        total: 0,
+        completed: 0,
+        pending: 0,
+    });
+
+    const [statsLoading, setStatsLoading] = useState(true);
 
     useEffect(() => {
 
@@ -62,45 +70,37 @@ function Dashboard() {
     }, []);
     useEffect(() => {
 
-        const fetchWishlist = async () => {
+        const fetchBookingStats = async () => {
 
             try {
 
-                const data = await getWishlist();
+                const data = await getBookingStats();
 
                 if (data.success) {
-                    setWishlist(data.wishlist);
+                    setBookingStats(data.stats);
                 }
 
             } catch (error) {
 
                 console.error(
-                    "Dashboard Wishlist Error:",
+                    "Dashboard Stats Error:",
                     error
                 );
 
             } finally {
 
-                setWishlistLoading(false);
+                setStatsLoading(false);
 
             }
 
         };
 
-        fetchWishlist();
+        fetchBookingStats();
 
     }, []);
 
-    // Calculate booking statistics
-    const totalBookings = bookings.length;
 
-    const completedBookings = bookings.filter(
-        (booking) => booking.status === "completed"
-    ).length;
 
-    const pendingBookings = bookings.filter(
-        (booking) => booking.status === "pending"
-    ).length;
 
     return (
 
@@ -119,7 +119,7 @@ function Dashboard() {
 
                     <StatsCard
                         title="Total Bookings"
-                        value={loading ? "..." : totalBookings}
+                        value={statsLoading ? "..." : bookingStats.total}
                         icon={
                             <CalendarDays
                                 size={28}
@@ -131,7 +131,7 @@ function Dashboard() {
 
                     <StatsCard
                         title="Completed"
-                        value={loading ? "..." : completedBookings}
+                        value={statsLoading ? "..." : bookingStats.completed}
                         icon={
                             <CheckCircle
                                 size={28}
@@ -143,7 +143,7 @@ function Dashboard() {
 
                     <StatsCard
                         title="Pending"
-                        value={loading ? "..." : pendingBookings}
+                        value={statsLoading ? "..." : bookingStats.pending}
                         icon={
                             <Clock
                                 size={28}
@@ -155,8 +155,7 @@ function Dashboard() {
 
                     <StatsCard
                         title="Wishlist"
-                        value={wishlistLoading ? "..." : wishlist.length}
-                        icon={
+                        value={wishlistCount} icon={
                             <Heart
                                 size={28}
                                 className="text-white"
@@ -173,7 +172,9 @@ function Dashboard() {
 
                 {/* Wishlist */}
 
-                <WishlistPreview />
+                <WishlistPreview
+                    onWishlistCountChange={setWishlistCount}
+                />
 
                 {/* Notifications */}
 

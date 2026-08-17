@@ -4,8 +4,7 @@ import { Link } from "react-router-dom";
 import services from "../../data/services";
 import { getWishlist } from "../../services/wishlistService";
 
-function WishlistPreview() {
-
+function WishlistPreview({ onWishlistCountChange }) {
     const [wishlist, setWishlist] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -19,6 +18,9 @@ function WishlistPreview() {
 
                 if (data.success) {
                     setWishlist(data.wishlist);
+                    if (onWishlistCountChange) {
+                        onWishlistCountChange(data.wishlist.length);
+                    }
                 }
 
             } catch (error) {

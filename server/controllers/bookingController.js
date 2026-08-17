@@ -91,3 +91,43 @@ export const getMyBookings = async (req, res) => {
         });
     }
 };
+// Get booking statistics of logged-in user
+export const getBookingStats = async (req, res) => {
+    try {
+        const bookings = await Booking.find({
+            user: req.userId,
+        }).select("status");
+
+        const total = bookings.length;
+
+        const completed = bookings.filter(
+            (booking) => booking.status === "completed"
+        ).length;
+
+        const pending = bookings.filter(
+            (booking) =>
+                booking.status === "pending" ||
+                booking.status === "confirmed"
+        ).length;
+
+        res.status(200).json({
+            success: true,
+            stats: {
+                total,
+                completed,
+                pending,
+            },
+        });
+
+    } catch (error) {
+        console.error(
+            "Get Booking Stats Error:",
+            error.message
+        );
+
+        res.status(500).json({
+            success: false,
+            message: "Server error",
+        });
+    }
+};
