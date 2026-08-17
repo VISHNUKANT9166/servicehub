@@ -2,8 +2,11 @@ import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
+import { createBooking } from "../../services/bookingService";
+
 function BookingForm({ service }) {
     const navigate = useNavigate();
+
     const [formData, setFormData] = useState({
         fullName: "",
         phone: "",
@@ -13,55 +16,58 @@ function BookingForm({ service }) {
         time: "",
         notes: "",
     });
+
     const [errors, setErrors] = useState({});
+    const [loading, setLoading] = useState(false);
+
     const timeSlots = [
         "09:00 AM",
         "11:00 AM",
         "01:00 PM",
         "03:00 PM",
-        "05:00 PM"
+        "05:00 PM",
     ];
+
     const platformFee = 49;
     const gst = Math.round(service.price * 0.18);
     const totalAmount = service.price + platformFee + gst;
 
     const handleChange = (e) => {
-
         const { name } = e.target;
         let value = e.target.value;
 
-        // Phone number ke liye sirf digits allow karo aur max 10 digits
+        // Allow only digits and maximum 10 digits for phone
         if (name === "phone") {
             value = value.replace(/\D/g, "").slice(0, 10);
         }
 
-        setFormData({
-            ...formData,
+        setFormData((prev) => ({
+            ...prev,
             [name]: value,
-        });
+        }));
 
-        // Agar us field ka error hai to hata do
-        setErrors({
-            ...errors,
+        setErrors((prev) => ({
+            ...prev,
             [name]: "",
-        });
-
+        }));
     };
 
-    const handleSubmit = (e) => {
-
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         let newErrors = {};
 
+        // Full Name
         if (!formData.fullName.trim()) {
             newErrors.fullName = "Full Name is required";
         }
 
+        // Phone
         if (!/^\d{10}$/.test(formData.phone)) {
             newErrors.phone = "Phone number must be 10 digits";
         }
 
+        // Email
         if (!formData.email.trim()) {
             newErrors.email = "Email is required";
         } else if (
@@ -70,10 +76,17 @@ function BookingForm({ service }) {
             newErrors.email = "Enter a valid email address";
         }
 
+        // Address
+        if (!formData.address.trim()) {
+            newErrors.address = "Address is required";
+        }
+
+        // Date
         if (!formData.date) {
             newErrors.date = "Please select a date";
         }
 
+        // Time
         if (!formData.time) {
             newErrors.time = "Please select a time";
         }
@@ -81,34 +94,60 @@ function BookingForm({ service }) {
         setErrors(newErrors);
 
         if (Object.keys(newErrors).length > 0) {
-
             toast.error("⚠ Please complete all required fields.");
-
             return;
         }
-        const bookingId =
-            "BK-" + Math.floor(100000 + Math.random() * 900000);
 
-        console.log("Booking ID:", bookingId);
+        try {
+            setLoading(true);
 
-        console.log(formData);
-        toast.success("🎉 Booking confirmed successfully!");
+            // Data sent to backend
+            const bookingData = {
+                service: service.id,
+                serviceTitle: service.title,
+                professional: service.professional,
+                bookingDate: formData.date,
+                bookingTime: formData.time,
+                address: formData.address,
+                city: service.city,
+                phone: formData.phone,
+                price: service.price,
+            };
 
-        // Future me yaha API call hogi
+            console.log("Booking Data:", bookingData);
 
-        navigate("/booking-success", {
-            state: {
-                bookingId,
-                service,
-                formData,
-                totalAmount,
-            },
-        });
+            // Create booking in MongoDB
+            const data = await createBooking(bookingData);
 
+            if (data.success) {
+                toast.success("🎉 Booking confirmed successfully!");
+
+                navigate("/booking-success", {
+                    state: {
+                        bookingId: data.booking._id,
+                        service,
+                        formData,
+                        totalAmount,
+                        booking: data.booking,
+                    },
+                });
+            }
+
+        } catch (error) {
+            console.error("Booking Error:", error);
+
+            const message =
+                error.response?.data?.message ||
+                "Failed to create booking. Please try again.";
+
+            toast.error(message);
+
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
-
         <form
             onSubmit={handleSubmit}
             className="bg-white rounded-2xl shadow-lg p-8"
@@ -117,6 +156,9 @@ function BookingForm({ service }) {
             <h2 className="text-2xl font-bold mb-6">
                 Customer Details
             </h2>
+
+            {/* Selected Service */}
+
             <div className="mb-8 bg-blue-50 border border-blue-100 rounded-xl p-5">
 
                 <h3 className="text-lg font-semibold text-gray-800">
@@ -132,6 +174,7 @@ function BookingForm({ service }) {
                     />
 
                     <div>
+
                         <h4 className="font-semibold text-lg">
                             {service.title}
                         </h4>
@@ -143,6 +186,7 @@ function BookingForm({ service }) {
                         <p className="text-blue-600 font-bold mt-1">
                             ₹{service.price}
                         </p>
+
                     </div>
 
                 </div>
@@ -166,6 +210,7 @@ function BookingForm({ service }) {
                     className="w-full border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                     required
                 />
+
                 {errors.fullName && (
                     <p className="text-red-500 text-sm mt-2">
                         {errors.fullName}
@@ -191,6 +236,7 @@ function BookingForm({ service }) {
                     className="w-full border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                     required
                 />
+
                 {errors.phone && (
                     <p className="text-red-500 text-sm mt-2">
                         {errors.phone}
@@ -216,6 +262,7 @@ function BookingForm({ service }) {
                     className="w-full border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                     required
                 />
+
                 {errors.email && (
                     <p className="text-red-500 text-sm mt-2">
                         {errors.email}
@@ -242,6 +289,12 @@ function BookingForm({ service }) {
                     required
                 />
 
+                {errors.address && (
+                    <p className="text-red-500 text-sm mt-2">
+                        {errors.address}
+                    </p>
+                )}
+
             </div>
 
             {/* Date */}
@@ -261,6 +314,7 @@ function BookingForm({ service }) {
                     className="w-full border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                     required
                 />
+
                 {errors.date && (
                     <p className="text-red-500 text-sm mt-2">
                         {errors.date}
@@ -290,17 +344,16 @@ function BookingForm({ service }) {
                     </option>
 
                     {timeSlots.map((slot) => (
-
                         <option
                             key={slot}
                             value={slot}
                         >
                             {slot}
                         </option>
-
                     ))}
 
                 </select>
+
                 {errors.time && (
                     <p className="text-red-500 text-sm mt-2">
                         {errors.time}
@@ -328,15 +381,19 @@ function BookingForm({ service }) {
 
             </div>
 
+            {/* Confirm Booking */}
+
             <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition"
+                disabled={loading}
+                className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-                Confirm Booking
+                {loading
+                    ? "Creating Booking..."
+                    : "Confirm Booking"}
             </button>
 
         </form>
-
     );
 }
 

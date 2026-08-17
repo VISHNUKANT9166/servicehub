@@ -1,15 +1,48 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+
 import services from "../../data/services";
+import { getWishlist } from "../../services/wishlistService";
 
 function WishlistPreview() {
 
-    const wishlist =
-        JSON.parse(localStorage.getItem("wishlist")) || [];
+    const [wishlist, setWishlist] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    const wishlistServices =
-        services.filter((service) =>
-            wishlist.includes(service.id)
-        );
+    useEffect(() => {
+
+        const fetchWishlist = async () => {
+
+            try {
+
+                const data = await getWishlist();
+
+                if (data.success) {
+                    setWishlist(data.wishlist);
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "Wishlist Preview Error:",
+                    error
+                );
+
+            } finally {
+
+                setLoading(false);
+
+            }
+
+        };
+
+        fetchWishlist();
+
+    }, []);
+
+    const wishlistServices = services.filter((service) =>
+        wishlist.includes(service.id)
+    );
 
     return (
 
@@ -19,58 +52,61 @@ function WishlistPreview() {
                 Wishlist Preview
             </h2>
 
-            {
-                wishlistServices.length === 0 ? (
+            {loading ? (
 
-                    <p className="text-gray-500">
-                        No services in wishlist.
-                    </p>
+                <p className="text-gray-500">
+                    Loading wishlist...
+                </p>
 
-                ) : (
+            ) : wishlistServices.length === 0 ? (
 
-                    <div className="space-y-4">
+                <p className="text-gray-500">
+                    No services in wishlist.
+                </p>
 
-                        {
-                            wishlistServices.slice(0, 3).map((service) => (
+            ) : (
 
-                                <div
-                                    key={service.id}
-                                    className="flex items-center justify-between border-b pb-4 last:border-none"
-                                >
+                <div className="space-y-4">
 
-                                    <div>
+                    {wishlistServices
+                        .slice(0, 3)
+                        .map((service) => (
 
-                                        <h3 className="font-semibold">
-                                            {service.title}
-                                        </h3>
+                            <div
+                                key={service.id}
+                                className="flex items-center justify-between border-b pb-4 last:border-none"
+                            >
 
-                                        <p className="text-blue-600 font-bold mt-1">
-                                            ₹{service.price}
-                                        </p>
+                                <div>
 
-                                    </div>
+                                    <h3 className="font-semibold">
+                                        {service.title}
+                                    </h3>
 
-                                    <Link
-                                        to={`/services/${service.id}`}
-                                        className="text-blue-600 hover:underline"
-                                    >
-                                        View
-                                    </Link>
+                                    <p className="text-blue-600 font-bold mt-1">
+                                        ₹{service.price}
+                                    </p>
 
                                 </div>
 
-                            ))
-                        }
+                                <Link
+                                    to={`/services/${service.id}`}
+                                    className="text-blue-600 hover:underline"
+                                >
+                                    View
+                                </Link>
 
-                    </div>
+                            </div>
 
-                )
-            }
+                        ))}
+
+                </div>
+
+            )}
 
         </div>
 
     );
-
 }
 
 export default WishlistPreview;

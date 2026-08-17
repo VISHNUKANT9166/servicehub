@@ -1,24 +1,101 @@
+import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
 
+import {
+    getNotifications,
+    markNotificationAsRead,
+} from "../../services/notificationService";
 function NotificationPanel() {
 
-    const notifications = [
-        {
-            id: 1,
-            title: "Booking Confirmed",
-            time: "2 hours ago",
-        },
-        {
-            id: 2,
-            title: "Electrician arriving today",
-            time: "Today",
-        },
-        {
-            id: 3,
-            title: "20% OFF on Home Cleaning",
-            time: "Yesterday",
-        },
-    ];
+    const [notifications, setNotifications] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+
+        const fetchNotifications = async () => {
+
+            try {
+
+                const data = await getNotifications();
+
+                if (data.success) {
+                    setNotifications(data.notifications);
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "Notification Fetch Error:",
+                    error
+                );
+
+            } finally {
+
+                setLoading(false);
+
+            }
+
+        };
+
+        fetchNotifications();
+
+    }, []);
+
+    const handleNotificationClick = async (id) => {
+        try {
+            await markNotificationAsRead(id);
+
+            setNotifications((prev) =>
+                prev.map((notification) =>
+                    notification._id === id
+                        ? { ...notification, read: true }
+                        : notification
+                )
+            );
+
+        } catch (error) {
+            console.error(
+                "Mark Notification Read Error:",
+                error
+            );
+        }
+    };
+
+    const formatTime = (createdAt) => {
+
+        const date = new Date(createdAt);
+        const now = new Date();
+
+        const diffInSeconds =
+            Math.floor((now - date) / 1000);
+
+        if (diffInSeconds < 60) {
+            return "Just now";
+        }
+
+        const diffInMinutes =
+            Math.floor(diffInSeconds / 60);
+
+        if (diffInMinutes < 60) {
+            return `${diffInMinutes} min ago`;
+        }
+
+        const diffInHours =
+            Math.floor(diffInMinutes / 60);
+
+        if (diffInHours < 24) {
+            return `${diffInHours} hours ago`;
+        }
+
+        const diffInDays =
+            Math.floor(diffInHours / 24);
+
+        if (diffInDays === 1) {
+            return "Yesterday";
+        }
+
+        return `${diffInDays} days ago`;
+    };
 
     return (
 
@@ -28,46 +105,69 @@ function NotificationPanel() {
                 Notifications
             </h2>
 
-            <div className="space-y-5">
+            {loading ? (
 
-                {notifications.map((item) => (
+                <p className="text-gray-500">
+                    Loading notifications...
+                </p>
 
-                    <div
-                        key={item.id}
-                        className="flex gap-4 border-b pb-4 last:border-none"
-                    >
+            ) : notifications.length === 0 ? (
 
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                <p className="text-gray-500">
+                    No notifications yet.
+                </p>
 
-                            <Bell
-                                size={18}
-                                className="text-blue-600"
-                            />
+            ) : (
+
+                <div className="space-y-5">
+
+                    {notifications.map((item) => (
+
+                        <div
+                            key={item._id}
+                            onClick={() => handleNotificationClick(item._id)}
+                            className={`flex gap-4 border-b pb-4 last:border-none cursor-pointer ${!item.read
+                                    ? "bg-blue-50 rounded-xl p-3"
+                                    : ""
+                                }`}
+                        >
+
+                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+
+                                <Bell
+                                    size={18}
+                                    className="text-blue-600"
+                                />
+
+                            </div>
+
+                            <div>
+
+                                <h3 className="font-semibold">
+                                    {item.title}
+                                </h3>
+
+                                <p className="text-gray-600 text-sm mt-1">
+                                    {item.message}
+                                </p>
+
+                                <p className="text-gray-500 text-sm mt-1">
+                                    {formatTime(item.createdAt)}
+                                </p>
+
+                            </div>
 
                         </div>
 
-                        <div>
+                    ))}
 
-                            <h3 className="font-semibold">
-                                {item.title}
-                            </h3>
+                </div>
 
-                            <p className="text-gray-500 text-sm">
-                                {item.time}
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                ))}
-
-            </div>
+            )}
 
         </div>
 
     );
-
 }
 
 export default NotificationPanel;

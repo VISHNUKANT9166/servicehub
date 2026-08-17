@@ -1,5 +1,6 @@
 import Navbar from "../components/Navbar/Navbar";
 import Footer from "../components/Footer/Footer";
+
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -7,22 +8,50 @@ import services from "../data/services";
 
 import ServiceCard from "../components/ServiceCard/ServiceCard";
 
+import { getWishlist } from "../services/wishlistService";
+
 function Wishlist() {
 
     const [wishlistServices, setWishlistServices] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
 
-        const wishlist =
-            JSON.parse(localStorage.getItem("wishlist")) || [];
+        const fetchWishlist = async () => {
 
-        const filteredServices = services.filter((service) =>
-            wishlist.includes(service.id)
-        );
+            try {
 
-        setWishlistServices(filteredServices);
+                const data = await getWishlist();
+
+                if (data.success) {
+
+                    const filteredServices = services.filter(
+                        (service) =>
+                            data.wishlist.includes(service.id)
+                    );
+
+                    setWishlistServices(filteredServices);
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "Wishlist Page Error:",
+                    error
+                );
+
+            } finally {
+
+                setLoading(false);
+
+            }
+
+        };
+
+        fetchWishlist();
 
     }, []);
+
     return (
         <>
             <Navbar />
@@ -38,9 +67,20 @@ function Wishlist() {
                     <p className="text-gray-500 mt-2">
                         Your favourite services will appear here.
                     </p>
+
                     <div className="mt-10">
 
-                        {wishlistServices.length === 0 ? (
+                        {loading ? (
+
+                            <div className="bg-white rounded-2xl shadow-md p-10 text-center">
+
+                                <p className="text-gray-500">
+                                    Loading wishlist...
+                                </p>
+
+                            </div>
+
+                        ) : wishlistServices.length === 0 ? (
 
                             <div className="bg-white rounded-2xl shadow-md p-10 text-center">
 

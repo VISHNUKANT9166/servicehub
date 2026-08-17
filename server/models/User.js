@@ -62,6 +62,10 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: "",
         },
+        wishlist: {
+            type: [Number],
+            default: [],
+        },
     },
     {
         timestamps: true,

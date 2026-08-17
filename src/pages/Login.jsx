@@ -1,14 +1,15 @@
 import toast from "react-hot-toast";
-import { Link } from "react-router-dom";
-import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useState, useRef } from "react";
+
 import AuthLayout from "../components/Auth/AuthLayout";
 import AuthInput from "../components/Auth/AuthInput";
 import SocialLogin from "../components/Auth/SocialLogin";
+
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { loginUser } from "../services/authService";
 
 function Login() {
-
     const [formData, setFormData] = useState({
         email: "",
         password: "",
@@ -17,11 +18,13 @@ function Login() {
 
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
+
+    const submittingRef = useRef(false);
+
     const { login } = useAuth();
     const navigate = useNavigate();
 
     const handleChange = (e) => {
-
         const { name, value, type, checked } = e.target;
 
         setFormData((prev) => ({
@@ -34,67 +37,84 @@ function Login() {
             ...prev,
             [name]: "",
         }));
-
     };
 
-    const handleSubmit = (e) => {
-
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
-        let newErrors = {};
+        // Prevent duplicate form submissions
+        if (submittingRef.current) return;
 
+        submittingRef.current = true;
+
+        const newErrors = {};
+
+        // Email validation
         if (!formData.email.trim()) {
             newErrors.email = "Email is required";
         }
 
+        // Password validation
         if (!formData.password.trim()) {
             newErrors.password = "Password is required";
         }
 
         setErrors(newErrors);
 
+        // Stop if validation fails
         if (Object.keys(newErrors).length > 0) {
-
+            submittingRef.current = false;
             toast.error("Please fix the highlighted errors.");
-
             return;
         }
-        setLoading(true);
-        console.log("Login Data:", formData);
 
-        // Backend integration later
-        setTimeout(() => {
+        try {
+            setLoading(true);
 
-            setLoading(false);
-
-            toast.success("Login Successful!");
-
-            login({
-                name: "Vishnukant Yadav",
+            // Call Login API
+            const data = await loginUser({
                 email: formData.email,
+                password: formData.password,
             });
 
-            toast.success("Login Successful!");
+            if (data.success) {
+                // Save JWT token
+                localStorage.setItem("token", data.token);
 
-            navigate("/dashboard");
+                // Save user in AuthContext
+                login(data.user);
 
-        }, 1500);
+                // Remove any existing toast
+                toast.dismiss();
 
-        return;
+                // Show only one success toast
+                toast.success("Login Successful!");
 
+                // Redirect to dashboard
+                navigate("/dashboard");
+            }
+        } catch (error) {
+            console.error("Login Error:", error);
+
+            const message =
+                error.response?.data?.message ||
+                "Login failed. Please try again.";
+
+            toast.error(message);
+        } finally {
+            submittingRef.current = false;
+            setLoading(false);
+        }
     };
 
     return (
-
         <AuthLayout
             title="Welcome Back"
             subtitle="Login to continue using ServiceHub"
         >
-
             <form onSubmit={handleSubmit}>
 
                 {/* Email */}
-
                 <AuthInput
                     label="Email"
                     type="email"
@@ -106,7 +126,6 @@ function Login() {
                 />
 
                 {/* Password */}
-
                 <AuthInput
                     label="Password"
                     type="password"
@@ -117,12 +136,10 @@ function Login() {
                     error={errors.password}
                 />
 
-                {/* Remember + Forgot */}
-
+                {/* Remember Me + Forgot Password */}
                 <div className="flex items-center justify-between mb-5">
 
                     <label className="flex items-center gap-2 text-sm text-gray-600">
-
                         <input
                             type="checkbox"
                             name="remember"
@@ -131,7 +148,6 @@ function Login() {
                         />
 
                         Remember Me
-
                     </label>
 
                     <Link
@@ -144,25 +160,21 @@ function Login() {
                 </div>
 
                 {/* Login Button */}
-
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition"
+                    className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                    {
-                        loading
-                            ? "Logging In..."
-                            : "Login"
-                    }
+                    {loading ? "Logging In..." : "Login"}
                 </button>
 
             </form>
 
+            {/* Social Login */}
             <SocialLogin />
 
+            {/* Signup Link */}
             <p className="text-center mt-6 text-gray-600">
-
                 Don't have an account?{" "}
 
                 <Link
@@ -171,11 +183,9 @@ function Login() {
                 >
                     Sign Up
                 </Link>
-
             </p>
 
         </AuthLayout>
-
     );
 }
 

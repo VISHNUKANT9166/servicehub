@@ -1,9 +1,12 @@
+import { useEffect, useState } from "react";
+
 import Navbar from "../components/Navbar/Navbar";
 import Footer from "../components/Footer/Footer";
 
 import DashboardLayout from "../components/Dashboard/DashboardLayout";
 import DashboardSidebar from "../components/Dashboard/DashboardSidebar";
 import DashboardHeader from "../components/Dashboard/DashboardHeader";
+
 import {
     CalendarDays,
     Heart,
@@ -17,7 +20,87 @@ import WishlistPreview from "../components/Dashboard/WishlistPreview";
 import NotificationPanel from "../components/Dashboard/NotificationPanel";
 import ProfileCard from "../components/Dashboard/ProfileCard";
 
+import { getMyBookings } from "../services/bookingService";
+import { getWishlist } from "../services/wishlistService";
+
 function Dashboard() {
+
+    const [bookings, setBookings] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [wishlist, setWishlist] = useState([]);
+    const [wishlistLoading, setWishlistLoading] = useState(true);
+
+    useEffect(() => {
+
+        const fetchBookings = async () => {
+
+            try {
+
+                const data = await getMyBookings();
+
+                if (data.success) {
+                    setBookings(data.bookings);
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "Dashboard Bookings Error:",
+                    error
+                );
+
+            } finally {
+
+                setLoading(false);
+
+            }
+
+        };
+
+        fetchBookings();
+
+    }, []);
+    useEffect(() => {
+
+        const fetchWishlist = async () => {
+
+            try {
+
+                const data = await getWishlist();
+
+                if (data.success) {
+                    setWishlist(data.wishlist);
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "Dashboard Wishlist Error:",
+                    error
+                );
+
+            } finally {
+
+                setWishlistLoading(false);
+
+            }
+
+        };
+
+        fetchWishlist();
+
+    }, []);
+
+    // Calculate booking statistics
+    const totalBookings = bookings.length;
+
+    const completedBookings = bookings.filter(
+        (booking) => booking.status === "completed"
+    ).length;
+
+    const pendingBookings = bookings.filter(
+        (booking) => booking.status === "pending"
+    ).length;
 
     return (
 
@@ -29,51 +112,83 @@ function Dashboard() {
             >
 
                 <DashboardHeader />
+
+                {/* Statistics */}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mt-8">
 
                     <StatsCard
                         title="Total Bookings"
-                        value="25"
-                        icon={<CalendarDays size={28} className="text-white" />}
+                        value={loading ? "..." : totalBookings}
+                        icon={
+                            <CalendarDays
+                                size={28}
+                                className="text-white"
+                            />
+                        }
                         color="bg-blue-500"
                     />
 
                     <StatsCard
                         title="Completed"
-                        value="18"
-                        icon={<CheckCircle size={28} className="text-white" />}
+                        value={loading ? "..." : completedBookings}
+                        icon={
+                            <CheckCircle
+                                size={28}
+                                className="text-white"
+                            />
+                        }
                         color="bg-green-500"
                     />
 
                     <StatsCard
                         title="Pending"
-                        value="5"
-                        icon={<Clock size={28} className="text-white" />}
+                        value={loading ? "..." : pendingBookings}
+                        icon={
+                            <Clock
+                                size={28}
+                                className="text-white"
+                            />
+                        }
                         color="bg-yellow-500"
                     />
 
                     <StatsCard
                         title="Wishlist"
-                        value="8"
-                        icon={<Heart size={28} className="text-white" />}
+                        value={wishlistLoading ? "..." : wishlist.length}
+                        icon={
+                            <Heart
+                                size={28}
+                                className="text-white"
+                            />
+                        }
                         color="bg-red-500"
                     />
 
                 </div>
-                <RecentBookings />
+
+                {/* Recent Bookings */}
+
+                <RecentBookings bookings={bookings} />
+
+                {/* Wishlist */}
+
                 <WishlistPreview />
+
+                {/* Notifications */}
+
                 <NotificationPanel />
+
+                {/* Profile */}
+
                 <ProfileCard />
 
             </DashboardLayout>
 
-
             <Footer />
-
         </>
 
     );
-
 }
 
 export default Dashboard;
