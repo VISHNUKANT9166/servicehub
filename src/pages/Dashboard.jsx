@@ -37,6 +37,7 @@ function Dashboard() {
     });
 
     const [statsLoading, setStatsLoading] = useState(true);
+    const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
     useEffect(() => {
 
@@ -111,7 +112,9 @@ function Dashboard() {
                 sidebar={<DashboardSidebar />}
             >
 
-                <DashboardHeader />
+                <DashboardHeader
+    unreadNotificationCount={unreadNotificationCount}
+/>
 
                 {/* Statistics */}
 
@@ -178,8 +181,9 @@ function Dashboard() {
 
                 {/* Notifications */}
 
-                <NotificationPanel />
-
+                <NotificationPanel
+                    onUnreadCountChange={setUnreadNotificationCount}
+                />
                 {/* Profile */}
 
                 <ProfileCard />

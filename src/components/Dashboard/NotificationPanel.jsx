@@ -5,7 +5,7 @@ import {
     getNotifications,
     markNotificationAsRead,
 } from "../../services/notificationService";
-function NotificationPanel() {
+function NotificationPanel({ onUnreadCountChange }) {
 
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -20,6 +20,13 @@ function NotificationPanel() {
 
                 if (data.success) {
                     setNotifications(data.notifications);
+                    const unreadCount = data.notifications.filter(
+                        (notification) => !notification.read
+                    ).length;
+
+                    if (onUnreadCountChange) {
+                        onUnreadCountChange(unreadCount);
+                    }
                 }
 
             } catch (error) {
@@ -45,13 +52,25 @@ function NotificationPanel() {
         try {
             await markNotificationAsRead(id);
 
-            setNotifications((prev) =>
-                prev.map((notification) =>
-                    notification._id === id
-                        ? { ...notification, read: true }
-                        : notification
-                )
-            );
+            setNotifications((prev) => {
+
+                const updatedNotifications = prev.map(
+                    (notification) =>
+                        notification._id === id
+                            ? { ...notification, read: true }
+                            : notification
+                );
+
+                const unreadCount = updatedNotifications.filter(
+                    (notification) => !notification.read
+                ).length;
+
+                if (onUnreadCountChange) {
+                    onUnreadCountChange(unreadCount);
+                }
+
+                return updatedNotifications;
+            });
 
         } catch (error) {
             console.error(
@@ -99,8 +118,10 @@ function NotificationPanel() {
 
     return (
 
-        <div className="bg-white rounded-2xl shadow-lg p-6 mt-8">
-
+        <div
+            id="notifications"
+            className="bg-white rounded-2xl shadow-lg p-6 mt-8"
+        >
             <h2 className="text-2xl font-bold mb-6">
                 Notifications
             </h2>
@@ -127,8 +148,8 @@ function NotificationPanel() {
                             key={item._id}
                             onClick={() => handleNotificationClick(item._id)}
                             className={`flex gap-4 border-b pb-4 last:border-none cursor-pointer ${!item.read
-                                    ? "bg-blue-50 rounded-xl p-3"
-                                    : ""
+                                ? "bg-blue-50 rounded-xl p-3"
+                                : ""
                                 }`}
                         >
 

@@ -22,3 +22,23 @@ export const createBooking = async (bookingData) => {
 
     return response.data;
 };
+// Cancel a booking
+export const cancelBooking = async (bookingId) => {
+    const response = await api.put(
+        `/bookings/${bookingId}/cancel`
+    );
+
+    return response.data;
+};
+// Reschedule an existing booking
+export const rescheduleBooking = async (
+    id,
+    bookingData
+) => {
+    const response = await api.put(
+        `/bookings/${id}/reschedule`,
+        bookingData
+    );
+
+    return response.data;
+};
