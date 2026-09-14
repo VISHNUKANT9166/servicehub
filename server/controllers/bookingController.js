@@ -7,13 +7,164 @@ import Notification from "../models/Notification.js";
 
 
 // =====================================================
+// NORMALIZE BOOKING TIME
+// Converts 12-hour and 24-hour input to HH:mm
+// =====================================================
+
+const normalizeBookingTime = (value) => {
+    if (typeof value !== "string") {
+        return "";
+    }
+
+    const time = value.trim();
+
+    // 24-hour format: HH:mm
+    const twentyFourHourMatch =
+        time.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+
+    if (twentyFourHourMatch) {
+        return time;
+    }
+
+    // 12-hour format: h:mm AM/PM
+    const twelveHourMatch =
+        time.match(
+            /^(0?[1-9]|1[0-2]):([0-5]\d)\s?(AM|PM)$/i
+        );
+
+    if (!twelveHourMatch) {
+        return "";
+    }
+
+    let hours =
+        Number(twelveHourMatch[1]);
+
+    const minutes =
+        twelveHourMatch[2];
+
+    const period =
+        twelveHourMatch[3].toUpperCase();
+
+    if (
+        period === "AM" &&
+        hours === 12
+    ) {
+        hours = 0;
+    }
+
+    if (
+        period === "PM" &&
+        hours !== 12
+    ) {
+        hours += 12;
+    }
+
+    return `${String(hours).padStart(2, "0")}:${minutes}`;
+};
+
+
+// =====================================================
+// VALIDATE BOOKING DATE + TIME
+// Prevents past dates and past times
+// =====================================================
+
+const validateBookingDateTime = (
+    bookingDate,
+    bookingTime
+) => {
+    const parsedBookingDate =
+        new Date(bookingDate);
+
+    if (
+        Number.isNaN(
+            parsedBookingDate.getTime()
+        )
+    ) {
+        return {
+            valid: false,
+            message:
+                "Invalid booking date",
+        };
+    }
+
+    const normalizedBookingTime =
+        normalizeBookingTime(bookingTime);
+
+    if (!normalizedBookingTime) {
+        return {
+            valid: false,
+            message:
+                "Invalid booking time. Use HH:mm or h:mm AM/PM format.",
+        };
+    }
+
+    const [
+        hours,
+        minutes,
+    ] = normalizedBookingTime
+        .split(":")
+        .map(Number);
+
+    parsedBookingDate.setHours(
+        hours,
+        minutes,
+        0,
+        0
+    );
+
+    const now =
+        new Date();
+
+    if (
+        parsedBookingDate <= now
+    ) {
+        return {
+            valid: false,
+            message:
+                "Booking date and time must be in the future",
+        };
+    }
+
+    return {
+        valid: true,
+        parsedBookingDate,
+        normalizedBookingTime,
+    };
+};
+
+
+// =====================================================
+// GENERATE ACTIVE BOOKING SLOT KEY
+// One professional cannot have two active bookings
+// for the same date and time.
+// =====================================================
+
+const generateActiveSlotKey = (
+    professionalId,
+    bookingDate,
+    bookingTime
+) => {
+    const datePart =
+        bookingDate
+            .toISOString()
+            .split("T")[0];
+
+    return `${professionalId}_${datePart}_${bookingTime}`;
+};
+
+
+// =====================================================
 // CREATE BOOKING
 // POST /api/bookings
 // Protected - User
 // =====================================================
 
-export const createBooking = async (req, res) => {
+export const createBooking = async (
+    req,
+    res
+) => {
     try {
+
         const {
             service,
             bookingDate,
@@ -49,11 +200,14 @@ export const createBooking = async (req, res) => {
         // =================================================
 
         if (
-            !mongoose.Types.ObjectId.isValid(service)
+            !mongoose.Types.ObjectId.isValid(
+                service
+            )
         ) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid service ID",
+                message:
+                    "Invalid service ID",
             });
         }
 
@@ -61,11 +215,6 @@ export const createBooking = async (req, res) => {
         // =================================================
         // NORMALIZE INPUT
         // =================================================
-
-        const normalizedBookingTime =
-            typeof bookingTime === "string"
-                ? bookingTime.trim()
-                : "";
 
         const normalizedAddress =
             typeof address === "string"
@@ -89,7 +238,6 @@ export const createBooking = async (req, res) => {
 
 
         if (
-            !normalizedBookingTime ||
             !normalizedAddress ||
             !normalizedPhone
         ) {
@@ -99,6 +247,35 @@ export const createBooking = async (req, res) => {
                     "Please fill all required booking details",
             });
         }
+
+
+        // =================================================
+        // VALIDATE DATE + TIME
+        // =================================================
+
+        const dateTimeValidation =
+            validateBookingDateTime(
+                bookingDate,
+                bookingTime
+            );
+
+
+        if (
+            !dateTimeValidation.valid
+        ) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    dateTimeValidation.message,
+            });
+        }
+
+
+        const parsedBookingDate =
+            dateTimeValidation.parsedBookingDate;
+
+        const normalizedBookingTime =
+            dateTimeValidation.normalizedBookingTime;
 
 
         // =================================================
@@ -127,9 +304,14 @@ export const createBooking = async (req, res) => {
 
         const professional =
             await Professional.findOne({
-                _id: serviceDocument.professional,
-                applicationStatus: "approved",
-                isVerified: true,
+                _id:
+                    serviceDocument.professional,
+
+                applicationStatus:
+                    "approved",
+
+                isVerified:
+                    true,
             });
 
 
@@ -143,50 +325,15 @@ export const createBooking = async (req, res) => {
 
 
         // =================================================
-        // VALIDATE BOOKING DATE
+        // GENERATE ACTIVE SLOT KEY
         // =================================================
 
-        const parsedBookingDate =
-            new Date(bookingDate);
-
-
-        if (
-            Number.isNaN(
-                parsedBookingDate.getTime()
-            )
-        ) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid booking date",
-            });
-        }
-
-
-        // =================================================
-        // NORMALIZE DATE
-        // =================================================
-
-        parsedBookingDate.setSeconds(0, 0);
-
-
-        // =================================================
-        // PREVENT PAST BOOKINGS
-        // =================================================
-
-        const now = new Date();
-
-
-        if (
-            parsedBookingDate < now &&
-            parsedBookingDate.toDateString() !==
-            now.toDateString()
-        ) {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Booking date cannot be in the past",
-            });
-        }
+        const activeSlotKey =
+            generateActiveSlotKey(
+                professional._id,
+                parsedBookingDate,
+                normalizedBookingTime
+            );
 
 
         // =================================================
@@ -225,7 +372,9 @@ export const createBooking = async (req, res) => {
 
         const booking =
             await Booking.create({
-                user: req.userId,
+
+                user:
+                    req.userId,
 
                 service:
                     serviceDocument._id,
@@ -233,7 +382,6 @@ export const createBooking = async (req, res) => {
                 professional:
                     professional._id,
 
-                // Snapshot service title
                 serviceTitle:
                     serviceDocument.title,
 
@@ -242,6 +390,9 @@ export const createBooking = async (req, res) => {
 
                 bookingTime:
                     normalizedBookingTime,
+
+                activeSlotKey:
+                    activeSlotKey,
 
                 address:
                     normalizedAddress,
@@ -255,7 +406,6 @@ export const createBooking = async (req, res) => {
                 notes:
                     normalizedNotes,
 
-                // Snapshot current service price
                 price:
                     serviceDocument.price,
 
@@ -276,14 +426,17 @@ export const createBooking = async (req, res) => {
                 booking._id
             )
                 .populate({
-                    path: "service",
+                    path:
+                        "service",
                     select:
                         "title category price duration image",
                 })
                 .populate({
-                    path: "professional",
+                    path:
+                        "professional",
                     populate: {
-                        path: "user",
+                        path:
+                            "user",
                         select:
                             "fullName email phone city state profileImage",
                     },
@@ -291,45 +444,51 @@ export const createBooking = async (req, res) => {
 
 
         // =================================================
-        // CUSTOMER NOTIFICATION
+        // NOTIFICATIONS
         // =================================================
 
-        await Notification.create({
-            user:
-                req.userId,
-
-            title:
-                "Booking Created",
-
-            message:
-                `${serviceDocument.title} booking created successfully.`,
-
-            type:
-                "booking",
-        });
-
-
-        // =================================================
-        // PROFESSIONAL NOTIFICATION
-        // =================================================
-
-        if (
-            professional.user
-        ) {
+        try {
 
             await Notification.create({
                 user:
-                    professional.user,
+                    req.userId,
 
                 title:
-                    "New Booking",
+                    "Booking Created",
 
                 message:
-                    `You received a new booking for ${serviceDocument.title}.`,
+                    `${serviceDocument.title} booking created successfully.`,
 
                 type:
                     "booking",
             });
+
+
+            if (
+                professional.user
+            ) {
+
+                await Notification.create({
+                    user:
+                        professional.user,
+
+                    title:
+                        "New Booking",
+
+                    message:
+                        `You received a new booking for ${serviceDocument.title}.`,
+
+                    type:
+                        "booking",
+                });
+            }
+
+        } catch (notificationError) {
+
+            console.error(
+                "Booking Notification Error:",
+                notificationError
+            );
         }
 
 
@@ -356,10 +515,6 @@ export const createBooking = async (req, res) => {
         );
 
 
-        // =================================================
-        // DUPLICATE BOOKING SLOT
-        // =================================================
-
         if (
             error?.code === 11000
         ) {
@@ -370,10 +525,6 @@ export const createBooking = async (req, res) => {
             });
         }
 
-
-        // =================================================
-        // MONGOOSE VALIDATION ERROR
-        // =================================================
 
         if (
             error?.name ===
@@ -486,9 +637,7 @@ export const getBookingStats = async (
                 user:
                     req.userId,
             })
-                .select(
-                    "status"
-                )
+                .select("status")
                 .lean();
 
 
@@ -565,9 +714,7 @@ export const getProfessionalBookingStats = async (
 
                 isVerified:
                     true,
-            }).select(
-                "_id"
-            );
+            }).select("_id");
 
 
         if (!professional) {
@@ -586,15 +733,12 @@ export const getProfessionalBookingStats = async (
                 professional:
                     professional._id,
             })
-                .select(
-                    "status"
-                )
+                .select("status")
                 .lean();
 
 
         const total =
             bookings.length;
-
 
         const pending =
             bookings.filter(
@@ -603,7 +747,6 @@ export const getProfessionalBookingStats = async (
                     "pending"
             ).length;
 
-
         const confirmed =
             bookings.filter(
                 (booking) =>
@@ -611,14 +754,12 @@ export const getProfessionalBookingStats = async (
                     "confirmed"
             ).length;
 
-
         const completed =
             bookings.filter(
                 (booking) =>
                     booking.status ===
                     "completed"
             ).length;
-
 
         const cancelled =
             bookings.filter(
@@ -758,63 +899,71 @@ export const cancelBooking = async (
         booking.status =
             "cancelled";
 
+        // Release the professional's slot.
+        booking.activeSlotKey =
+            null;
+
 
         await booking.save();
 
 
         // =================================================
-        // CUSTOMER NOTIFICATION
+        // NOTIFICATIONS
         // =================================================
 
-        await Notification.create({
-            user:
-                req.userId,
+        try {
 
-            title:
-                "Booking Cancelled",
+            await Notification.create({
+                user:
+                    req.userId,
 
-            message:
-                `${booking.serviceTitle} booking has been cancelled.`,
+                title:
+                    "Booking Cancelled",
 
-            type:
-                "booking",
-        });
+                message:
+                    `${booking.serviceTitle} booking has been cancelled.`,
 
-
-        // =================================================
-        // PROFESSIONAL NOTIFICATION
-        // =================================================
-
-        if (
-            booking.professional
-        ) {
-
-            const professional =
-                await Professional.findById(
-                    booking.professional
-                ).select(
-                    "user"
-                );
+                type:
+                    "booking",
+            });
 
 
             if (
-                professional?.user
+                booking.professional
             ) {
 
-                await Notification.create({
-                    user:
-                        professional.user,
+                const professional =
+                    await Professional.findById(
+                        booking.professional
+                    ).select("user");
 
-                    title:
-                        "Booking Cancelled",
 
-                    message:
-                        `${booking.serviceTitle} booking has been cancelled by the customer.`,
+                if (
+                    professional?.user
+                ) {
 
-                    type:
-                        "booking",
-                });
+                    await Notification.create({
+                        user:
+                            professional.user,
+
+                        title:
+                            "Booking Cancelled",
+
+                        message:
+                            `${booking.serviceTitle} booking has been cancelled by the customer.`,
+
+                        type:
+                            "booking",
+                    });
+                }
             }
+
+        } catch (notificationError) {
+
+            console.error(
+                "Cancellation Notification Error:",
+                notificationError
+            );
         }
 
 
@@ -834,6 +983,18 @@ export const cancelBooking = async (
             "Cancel Booking Error:",
             error
         );
+
+
+        if (
+            error?.code === 11000
+        ) {
+            return res.status(409).json({
+                success: false,
+                message:
+                    "This time slot is already booked. Please choose another time.",
+            });
+        }
+
 
         return res.status(500).json({
             success:
@@ -871,25 +1032,6 @@ export const rescheduleBooking = async (
         if (
             !bookingDate ||
             !bookingTime
-        ) {
-            return res.status(400).json({
-                success:
-                    false,
-
-                message:
-                    "Booking date and time are required",
-            });
-        }
-
-
-        const normalizedBookingTime =
-            typeof bookingTime === "string"
-                ? bookingTime.trim()
-                : "";
-
-
-        if (
-            !normalizedBookingTime
         ) {
             return res.status(400).json({
                 success:
@@ -978,61 +1120,46 @@ export const rescheduleBooking = async (
 
 
         // =================================================
-        // VALIDATE DATE
+        // VALIDATE DATE + TIME
         // =================================================
 
-        const parsedBookingDate =
-            new Date(
-                bookingDate
+        const dateTimeValidation =
+            validateBookingDateTime(
+                bookingDate,
+                bookingTime
             );
 
 
         if (
-            Number.isNaN(
-                parsedBookingDate.getTime()
-            )
+            !dateTimeValidation.valid
         ) {
             return res.status(400).json({
                 success:
                     false,
 
                 message:
-                    "Invalid booking date",
+                    dateTimeValidation.message,
             });
         }
 
 
-        // =================================================
-        // NORMALIZE DATE
-        // =================================================
+        const parsedBookingDate =
+            dateTimeValidation.parsedBookingDate;
 
-        parsedBookingDate.setSeconds(
-            0,
-            0
-        );
+        const normalizedBookingTime =
+            dateTimeValidation.normalizedBookingTime;
 
 
         // =================================================
-        // PREVENT PAST DATE
+        // GENERATE NEW ACTIVE SLOT KEY
         // =================================================
 
-        const now =
-            new Date();
-
-
-        if (
-            parsedBookingDate < now &&
-            parsedBookingDate.toDateString() !==
-            now.toDateString()
-        ) {
-            return res.status(400).json({
-                success:
-                    false,
-
-                message:
-                    "Booking date cannot be in the past",
-            });
-        }
+        const newActiveSlotKey =
+            generateActiveSlotKey(
+                booking.professional,
+                parsedBookingDate,
+                normalizedBookingTime
+            );
 
 
         // =================================================
@@ -1041,27 +1168,14 @@ export const rescheduleBooking = async (
 
         const existingBooking =
             await Booking.findOne({
-                professional:
-                    booking.professional,
-
-                bookingDate:
-                    parsedBookingDate,
-
-                bookingTime:
-                    normalizedBookingTime,
-
-                status: {
-                    $ne:
-                        "cancelled",
-                },
+                activeSlotKey:
+                    newActiveSlotKey,
 
                 _id: {
                     $ne:
                         booking._id,
                 },
-            }).select(
-                "_id"
-            );
+            }).select("_id");
 
 
         if (
@@ -1087,6 +1201,9 @@ export const rescheduleBooking = async (
         booking.bookingTime =
             normalizedBookingTime;
 
+        booking.activeSlotKey =
+            newActiveSlotKey;
+
         // Rescheduled booking requires
         // professional confirmation again.
         booking.status =
@@ -1097,58 +1214,62 @@ export const rescheduleBooking = async (
 
 
         // =================================================
-        // CUSTOMER NOTIFICATION
+        // NOTIFICATIONS
         // =================================================
 
-        await Notification.create({
-            user:
-                req.userId,
+        try {
 
-            title:
-                "Booking Rescheduled",
+            await Notification.create({
+                user:
+                    req.userId,
 
-            message:
-                `${booking.serviceTitle} booking has been rescheduled successfully.`,
+                title:
+                    "Booking Rescheduled",
 
-            type:
-                "booking",
-        });
+                message:
+                    `${booking.serviceTitle} booking has been rescheduled successfully.`,
 
-
-        // =================================================
-        // PROFESSIONAL NOTIFICATION
-        // =================================================
-
-        if (
-            booking.professional
-        ) {
-
-            const professional =
-                await Professional.findById(
-                    booking.professional
-                ).select(
-                    "user"
-                );
+                type:
+                    "booking",
+            });
 
 
             if (
-                professional?.user
+                booking.professional
             ) {
 
-                await Notification.create({
-                    user:
-                        professional.user,
+                const professional =
+                    await Professional.findById(
+                        booking.professional
+                    ).select("user");
 
-                    title:
-                        "Booking Rescheduled",
 
-                    message:
-                        `${booking.serviceTitle} booking has been rescheduled by the customer.`,
+                if (
+                    professional?.user
+                ) {
 
-                    type:
-                        "booking",
-                });
+                    await Notification.create({
+                        user:
+                            professional.user,
+
+                        title:
+                            "Booking Rescheduled",
+
+                        message:
+                            `${booking.serviceTitle} booking has been rescheduled by the customer.`,
+
+                        type:
+                            "booking",
+                    });
+                }
             }
+
+        } catch (notificationError) {
+
+            console.error(
+                "Reschedule Notification Error:",
+                notificationError
+            );
         }
 
 
@@ -1170,17 +1291,11 @@ export const rescheduleBooking = async (
         );
 
 
-        // =================================================
-        // DUPLICATE BOOKING SLOT
-        // =================================================
-
         if (
             error?.code === 11000
         ) {
             return res.status(409).json({
-                success:
-                    false,
-
+                success: false,
                 message:
                     "This time slot is already booked. Please choose another time.",
             });
@@ -1192,9 +1307,7 @@ export const rescheduleBooking = async (
             "ValidationError"
         ) {
             return res.status(400).json({
-                success:
-                    false,
-
+                success: false,
                 message:
                     "Invalid booking details",
             });
@@ -1202,9 +1315,7 @@ export const rescheduleBooking = async (
 
 
         return res.status(500).json({
-            success:
-                false,
-
+            success: false,
             message:
                 "Server error",
         });
@@ -1234,9 +1345,7 @@ export const getProfessionalBookings = async (
 
                 isVerified:
                     true,
-            }).select(
-                "_id"
-            );
+            }).select("_id");
 
 
         if (!professional) {
@@ -1308,6 +1417,8 @@ export const getProfessionalBookings = async (
         });
     }
 };
+
+
 // =====================================================
 // UPDATE BOOKING STATUS
 // PATCH /api/bookings/:id/status
@@ -1337,7 +1448,9 @@ export const updateBookingStatus = async (
             )
         ) {
             return res.status(400).json({
-                success: false,
+                success:
+                    false,
+
                 message:
                     "Invalid booking ID",
             });
@@ -1354,6 +1467,7 @@ export const updateBookingStatus = async (
             "cancelled",
         ];
 
+
         if (
             typeof status !== "string" ||
             !allowedStatuses.includes(
@@ -1361,11 +1475,14 @@ export const updateBookingStatus = async (
             )
         ) {
             return res.status(400).json({
-                success: false,
+                success:
+                    false,
+
                 message:
                     "Invalid booking status",
             });
         }
+
 
         const normalizedStatus =
             status.trim().toLowerCase();
@@ -1377,21 +1494,22 @@ export const updateBookingStatus = async (
 
         const professional =
             await Professional.findOne({
-                user: req.userId,
+                user:
+                    req.userId,
 
                 applicationStatus:
                     "approved",
 
                 isVerified:
                     true,
-            }).select(
-                "_id"
-            );
+            }).select("_id");
 
 
         if (!professional) {
             return res.status(403).json({
-                success: false,
+                success:
+                    false,
+
                 message:
                     "Professional profile not found or unavailable",
             });
@@ -1404,7 +1522,8 @@ export const updateBookingStatus = async (
 
         const booking =
             await Booking.findOne({
-                _id: id,
+                _id:
+                    id,
 
                 professional:
                     professional._id,
@@ -1413,7 +1532,9 @@ export const updateBookingStatus = async (
 
         if (!booking) {
             return res.status(404).json({
-                success: false,
+                success:
+                    false,
+
                 message:
                     "Booking not found",
             });
@@ -1429,7 +1550,9 @@ export const updateBookingStatus = async (
             normalizedStatus
         ) {
             return res.status(400).json({
-                success: false,
+                success:
+                    false,
+
                 message:
                     `Booking is already ${normalizedStatus}`,
             });
@@ -1441,6 +1564,7 @@ export const updateBookingStatus = async (
         // =================================================
 
         const validTransitions = {
+
             pending: [
                 "confirmed",
                 "cancelled",
@@ -1469,7 +1593,9 @@ export const updateBookingStatus = async (
             )
         ) {
             return res.status(400).json({
-                success: false,
+                success:
+                    false,
+
                 message:
                     `Booking cannot be changed from ${booking.status} to ${normalizedStatus}`,
             });
@@ -1483,6 +1609,17 @@ export const updateBookingStatus = async (
         booking.status =
             normalizedStatus;
 
+
+        // Release slot when professional cancels.
+        if (
+            normalizedStatus ===
+            "cancelled"
+        ) {
+            booking.activeSlotKey =
+                null;
+        }
+
+
         await booking.save();
 
 
@@ -1490,60 +1627,77 @@ export const updateBookingStatus = async (
         // CUSTOMER NOTIFICATION
         // =================================================
 
-        let notificationTitle = "";
-        let notificationMessage = "";
+        try {
 
-        if (
-            normalizedStatus ===
-            "confirmed"
-        ) {
-            notificationTitle =
-                "Booking Confirmed";
+            let notificationTitle =
+                "";
 
-            notificationMessage =
-                `${booking.serviceTitle} booking has been confirmed by the professional.`;
-        }
-
-        if (
-            normalizedStatus ===
-            "completed"
-        ) {
-            notificationTitle =
-                "Booking Completed";
-
-            notificationMessage =
-                `${booking.serviceTitle} booking has been marked as completed.`;
-        }
-
-        if (
-            normalizedStatus ===
-            "cancelled"
-        ) {
-            notificationTitle =
-                "Booking Cancelled";
-
-            notificationMessage =
-                `${booking.serviceTitle} booking has been cancelled by the professional.`;
-        }
+            let notificationMessage =
+                "";
 
 
-        if (
-            notificationTitle &&
-            booking.user
-        ) {
-            await Notification.create({
-                user:
-                    booking.user,
+            if (
+                normalizedStatus ===
+                "confirmed"
+            ) {
+                notificationTitle =
+                    "Booking Confirmed";
 
-                title:
-                    notificationTitle,
+                notificationMessage =
+                    `${booking.serviceTitle} booking has been confirmed by the professional.`;
+            }
 
-                message:
-                    notificationMessage,
 
-                type:
-                    "booking",
-            });
+            if (
+                normalizedStatus ===
+                "completed"
+            ) {
+                notificationTitle =
+                    "Booking Completed";
+
+                notificationMessage =
+                    `${booking.serviceTitle} booking has been marked as completed.`;
+            }
+
+
+            if (
+                normalizedStatus ===
+                "cancelled"
+            ) {
+                notificationTitle =
+                    "Booking Cancelled";
+
+                notificationMessage =
+                    `${booking.serviceTitle} booking has been cancelled by the professional.`;
+            }
+
+
+            if (
+                notificationTitle &&
+                booking.user
+            ) {
+
+                await Notification.create({
+                    user:
+                        booking.user,
+
+                    title:
+                        notificationTitle,
+
+                    message:
+                        notificationMessage,
+
+                    type:
+                        "booking",
+                });
+            }
+
+        } catch (notificationError) {
+
+            console.error(
+                "Booking Status Notification Error:",
+                notificationError
+            );
         }
 
 
@@ -1602,9 +1756,16 @@ export const updateBookingStatus = async (
         );
 
 
-        // =================================================
-        // MONGOOSE VALIDATION ERROR
-        // =================================================
+        if (
+            error?.code === 11000
+        ) {
+            return res.status(409).json({
+                success: false,
+                message:
+                    "This time slot is already booked. Please choose another time.",
+            });
+        }
+
 
         if (
             error?.name ===

@@ -2,20 +2,12 @@ import mongoose from "mongoose";
 
 const bookingSchema = new mongoose.Schema(
     {
-        // =====================================================
-        // CUSTOMER
-        // =====================================================
-
         user: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true,
             index: true,
         },
-
-        // =====================================================
-        // SERVICE
-        // =====================================================
 
         service: {
             type: mongoose.Schema.Types.ObjectId,
@@ -24,10 +16,6 @@ const bookingSchema = new mongoose.Schema(
             index: true,
         },
 
-        // =====================================================
-        // PROFESSIONAL
-        // =====================================================
-
         professional: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Professional",
@@ -35,19 +23,11 @@ const bookingSchema = new mongoose.Schema(
             index: true,
         },
 
-        // =====================================================
-        // SERVICE SNAPSHOT
-        // =====================================================
-
         serviceTitle: {
             type: String,
             required: true,
             trim: true,
         },
-
-        // =====================================================
-        // BOOKING DATE & TIME
-        // =====================================================
 
         bookingDate: {
             type: Date,
@@ -61,9 +41,19 @@ const bookingSchema = new mongoose.Schema(
             trim: true,
         },
 
-        // =====================================================
-        // CUSTOMER CONTACT / ADDRESS
-        // =====================================================
+        /*
+         * Unique key for an active professional time slot.
+         *
+         * Example:
+         * professionalId_2026-09-20_14:30
+         *
+         * This field becomes null when a booking is cancelled,
+         * allowing the slot to be booked again.
+         */
+        activeSlotKey: {
+            type: String,
+            default: null,
+        },
 
         address: {
             type: String,
@@ -83,19 +73,11 @@ const bookingSchema = new mongoose.Schema(
             trim: true,
         },
 
-        // =====================================================
-        // PRICE SNAPSHOT
-        // =====================================================
-
         price: {
             type: Number,
             required: true,
             min: 0,
         },
-
-        // =====================================================
-        // ADDITIONAL CUSTOMER NOTES
-        // =====================================================
 
         notes: {
             type: String,
@@ -103,10 +85,6 @@ const bookingSchema = new mongoose.Schema(
             trim: true,
             maxlength: 1000,
         },
-
-        // =====================================================
-        // BOOKING STATUS
-        // =====================================================
 
         status: {
             type: String,
@@ -119,10 +97,6 @@ const bookingSchema = new mongoose.Schema(
             default: "pending",
             index: true,
         },
-
-        // =====================================================
-        // PAYMENT STATUS
-        // =====================================================
 
         paymentStatus: {
             type: String,
@@ -140,8 +114,9 @@ const bookingSchema = new mongoose.Schema(
     }
 );
 
+
 // =====================================================
-// COMPOUND INDEX
+// INDEXES
 // =====================================================
 
 bookingSchema.index({
@@ -155,6 +130,28 @@ bookingSchema.index({
     createdAt: -1,
 });
 
-const Booking = mongoose.model("Booking", bookingSchema);
+
+// =====================================================
+// UNIQUE ACTIVE SLOT
+// Prevents double booking at database level.
+// Sparse index allows cancelled bookings to have null.
+// =====================================================
+
+bookingSchema.index(
+    {
+        activeSlotKey: 1,
+    },
+    {
+        unique: true,
+        sparse: true,
+        name: "unique_active_booking_slot",
+    }
+);
+
+
+const Booking = mongoose.model(
+    "Booking",
+    bookingSchema
+);
 
 export default Booking;
