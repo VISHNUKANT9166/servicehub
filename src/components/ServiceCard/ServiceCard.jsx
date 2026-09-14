@@ -16,6 +16,7 @@ import {
     removeFromWishlist,
 } from "../../services/wishlistService";
 
+
 function ServiceCard({ service }) {
 
     const navigate = useNavigate();
@@ -23,8 +24,102 @@ function ServiceCard({ service }) {
     const [favorite, setFavorite] = useState(false);
     const [wishlistLoading, setWishlistLoading] = useState(false);
 
-    // Load user's wishlist from backend
+
+    // =========================================
+    // Safety check
+    // =========================================
+
+    if (!service) {
+        return null;
+    }
+
+
+    // =========================================
+    // Service ID
+    // =========================================
+
+    const serviceId = service._id;
+
+
+    // =========================================
+    // Professional Data
+    // =========================================
+
+    const professional = service.professional;
+
+    const professionalName =
+        professional &&
+            typeof professional === "object"
+            ? professional.name ||
+            professional.user?.name ||
+            "Professional"
+            : "Professional";
+
+
+    const experience =
+        professional &&
+            typeof professional === "object"
+            ? professional.experience || 0
+            : 0;
+
+
+    // =========================================
+    // Location
+    // =========================================
+
+    const location =
+        Array.isArray(service.serviceAreas) &&
+            service.serviceAreas.length > 0
+            ? service.serviceAreas[0]
+            : "Location not specified";
+
+
+    // =========================================
+    // Rating
+    // =========================================
+
+    const rating = service.rating || 0;
+
+    const reviews =
+        service.totalReviews ||
+        service.reviews ||
+        0;
+
+
+    // =========================================
+    // Availability
+    // =========================================
+
+    const availability =
+        service.availability || "Available";
+
+
+    // =========================================
+    // Fetch Wishlist Status
+    // =========================================
+
     useEffect(() => {
+
+        if (!serviceId) {
+            return;
+        }
+
+
+        // User login check
+
+        const token = localStorage.getItem("token");
+
+
+        // If user is not logged in,
+        // don't call protected wishlist API.
+
+        if (!token) {
+
+            setFavorite(false);
+
+            return;
+        }
+
 
         const fetchWishlist = async () => {
 
@@ -32,47 +127,110 @@ function ServiceCard({ service }) {
 
                 const data = await getWishlist();
 
-                if (data.success) {
 
-                    setFavorite(
-                        data.wishlist.includes(service.id)
-                    );
+                if (
+                    data.success &&
+                    Array.isArray(data.wishlist)
+                ) {
 
+                    const exists =
+                        data.wishlist.some((item) => {
+
+                            const wishlistId =
+                                typeof item === "object"
+                                    ? item._id
+                                    : item;
+
+
+                            return (
+                                String(wishlistId) ===
+                                String(serviceId)
+                            );
+                        });
+
+
+                    setFavorite(exists);
                 }
 
             } catch (error) {
 
-                console.error(
-                    "Wishlist Fetch Error:",
-                    error
-                );
+                // 401 means user is not authorized.
+                // Don't show unnecessary error.
 
+                if (
+                    error.response?.status !== 401
+                ) {
+
+                    console.error(
+                        "Wishlist Fetch Error:",
+                        error
+                    );
+                }
+
+
+                setFavorite(false);
             }
 
         };
 
+
         fetchWishlist();
 
-    }, [service.id]);
+    }, [serviceId]);
 
 
-    // Add / Remove wishlist
+    // =========================================
+    // Add / Remove Wishlist
+    // =========================================
+
     const handleWishlist = async (e) => {
 
         e.preventDefault();
         e.stopPropagation();
 
-        if (wishlistLoading) return;
+
+        if (
+            !serviceId ||
+            wishlistLoading
+        ) {
+            return;
+        }
+
+
+        // Check login
+
+        const token =
+            localStorage.getItem("token");
+
+
+        if (!token) {
+
+            toast.error(
+                "Please login to manage your wishlist."
+            );
+
+            navigate("/login");
+
+            return;
+        }
+
 
         try {
 
             setWishlistLoading(true);
 
+
+            // =====================================
+            // Remove
+            // =====================================
+
             if (favorite) {
 
-                const data = await removeFromWishlist(
-                    service.id
-                );
+                const data =
+                    await removeFromWishlist(
+                        serviceId
+                    );
+
 
                 if (data.success) {
 
@@ -81,14 +239,21 @@ function ServiceCard({ service }) {
                     toast.success(
                         "Removed from wishlist"
                     );
-
                 }
 
-            } else {
+            }
 
-                const data = await addToWishlist(
-                    service.id
-                );
+            // =====================================
+            // Add
+            // =====================================
+
+            else {
+
+                const data =
+                    await addToWishlist(
+                        serviceId
+                    );
+
 
                 if (data.success) {
 
@@ -97,9 +262,7 @@ function ServiceCard({ service }) {
                     toast.success(
                         "Added to wishlist ❤️"
                     );
-
                 }
-
             }
 
         } catch (error) {
@@ -109,9 +272,11 @@ function ServiceCard({ service }) {
                 error
             );
 
+
             const message =
                 error.response?.data?.message ||
                 "Unable to update wishlist.";
+
 
             toast.error(message);
 
@@ -120,45 +285,72 @@ function ServiceCard({ service }) {
             setWishlistLoading(false);
 
         }
-
     };
 
+
+    // =========================================
+    // Render
+    // =========================================
 
     return (
 
         <Link
-            to={`/services/${service.id}`}
+            to={`/services/${serviceId}`}
             className="block"
         >
 
             <div className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300">
 
+
+                {/* ================================= */}
                 {/* Service Image */}
+                {/* ================================= */}
 
-                <div className="relative h-52 overflow-hidden">
+                <div className="relative h-52 overflow-hidden bg-gray-200">
 
-                    <img
-                        src={service.image}
-                        alt={service.title}
-                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                    />
+                    {service.image ? (
+
+                        <img
+                            src={service.image}
+                            alt={
+                                service.title ||
+                                "Service"
+                            }
+                            className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                        />
+
+                    ) : (
+
+                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-4xl font-semibold">
+                            Service
+                        </div>
+
+                    )}
 
 
-                    {/* Category Badge */}
+                    {/* Category */}
 
                     <span className="absolute top-4 left-4 bg-blue-600 text-white text-xs font-medium px-3 py-1 rounded-full shadow">
 
-                        {service.category}
+                        {service.category ||
+                            "Service"}
 
                     </span>
 
 
-                    {/* Wishlist Button */}
+                    {/* Wishlist */}
 
                     <button
                         type="button"
                         onClick={handleWishlist}
-                        disabled={wishlistLoading}
+                        disabled={
+                            wishlistLoading
+                        }
+                        aria-label={
+                            favorite
+                                ? "Remove from wishlist"
+                                : "Add to wishlist"
+                        }
                         className="absolute top-4 right-4 bg-white p-2 rounded-full shadow-md hover:scale-110 transition disabled:opacity-50"
                     >
 
@@ -176,15 +368,19 @@ function ServiceCard({ service }) {
                 </div>
 
 
+                {/* ================================= */}
                 {/* Card Content */}
+                {/* ================================= */}
 
                 <div className="p-5">
 
-                    {/* Service Title */}
+
+                    {/* Title */}
 
                     <h2 className="text-2xl font-bold text-gray-800">
 
-                        {service.title}
+                        {service.title ||
+                            "Untitled Service"}
 
                     </h2>
 
@@ -198,12 +394,22 @@ function ServiceCard({ service }) {
                             className="text-yellow-500 fill-yellow-500"
                         />
 
-                        <span className="text-sm">
+                        {rating > 0 ? (
 
-                            {service.rating} (
-                            {service.reviews} Reviews)
+                            <span className="text-sm">
 
-                        </span>
+                                {rating} (
+                                {reviews} Reviews)
+
+                            </span>
+
+                        ) : (
+
+                            <span className="text-sm">
+                                New Service
+                            </span>
+
+                        )}
 
                     </div>
 
@@ -218,7 +424,7 @@ function ServiceCard({ service }) {
                         />
 
                         <span>
-                            {service.professional}
+                            {professionalName}
                         </span>
 
                     </div>
@@ -234,13 +440,17 @@ function ServiceCard({ service }) {
                         />
 
                         <span>
-                            {service.experience} Years Experience
+
+                            {experience > 0
+                                ? `${experience} Years Experience`
+                                : "Professional Service"}
+
                         </span>
 
                     </div>
 
 
-                    {/* City */}
+                    {/* Location */}
 
                     <div className="flex items-center gap-2 mt-2 text-gray-700">
 
@@ -250,7 +460,7 @@ function ServiceCard({ service }) {
                         />
 
                         <span>
-                            {service.city}
+                            {location}
                         </span>
 
                     </div>
@@ -262,7 +472,7 @@ function ServiceCard({ service }) {
 
                         <span className="inline-block bg-green-100 text-green-700 text-sm font-medium px-3 py-1 rounded-full">
 
-                            {service.availability}
+                            {availability}
 
                         </span>
 
@@ -279,7 +489,7 @@ function ServiceCard({ service }) {
 
                         <h3 className="text-3xl font-bold text-blue-600">
 
-                            ₹{service.price}
+                            ₹{service.price || 0}
 
                         </h3>
 
@@ -290,6 +500,9 @@ function ServiceCard({ service }) {
 
                     <div className="flex gap-3 mt-6">
 
+
+                        {/* Book Now */}
+
                         <button
                             type="button"
                             onClick={(e) => {
@@ -298,7 +511,7 @@ function ServiceCard({ service }) {
                                 e.stopPropagation();
 
                                 navigate(
-                                    `/booking/${service.id}`
+                                    `/booking/${serviceId}`
                                 );
 
                             }}
@@ -310,6 +523,8 @@ function ServiceCard({ service }) {
                         </button>
 
 
+                        {/* View Details */}
+
                         <button
                             type="button"
                             onClick={(e) => {
@@ -318,7 +533,7 @@ function ServiceCard({ service }) {
                                 e.stopPropagation();
 
                                 navigate(
-                                    `/services/${service.id}`
+                                    `/services/${serviceId}`
                                 );
 
                             }}
@@ -339,5 +554,6 @@ function ServiceCard({ service }) {
 
     );
 }
+
 
 export default ServiceCard;

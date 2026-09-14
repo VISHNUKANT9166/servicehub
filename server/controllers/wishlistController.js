@@ -1,9 +1,17 @@
-import User from "../models/User.js";
+import mongoose from "mongoose";
 
-// Get current user's wishlist
+import User from "../models/User.js";
+import Service from "../models/Service.js";
+
+
+// ======================================================
+// GET CURRENT USER WISHLIST
+// ======================================================
+
 export const getWishlist = async (req, res) => {
     try {
-        const user = await User.findById(req.userId).select("wishlist");
+        const user = await User.findById(req.userId)
+            .populate("wishlist");
 
         if (!user) {
             return res.status(404).json({
@@ -12,15 +20,22 @@ export const getWishlist = async (req, res) => {
             });
         }
 
-        res.status(200).json({
+        const wishlist = Array.isArray(user.wishlist)
+            ? user.wishlist
+            : [];
+
+        return res.status(200).json({
             success: true,
-            wishlist: user.wishlist,
+            wishlist,
         });
 
     } catch (error) {
-        console.error("Get Wishlist Error:", error.message);
+        console.error(
+            "Get Wishlist Error:",
+            error.message
+        );
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: "Server error",
         });
@@ -28,18 +43,33 @@ export const getWishlist = async (req, res) => {
 };
 
 
-// Add service to wishlist
+// ======================================================
+// ADD SERVICE TO WISHLIST
+// ======================================================
+
 export const addToWishlist = async (req, res) => {
     try {
-        const serviceId = Number(req.params.serviceId);
+        const { serviceId } = req.params;
 
-        if (!serviceId) {
+        // Validate MongoDB ObjectId
+        if (!mongoose.Types.ObjectId.isValid(serviceId)) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid service ID",
             });
         }
 
+        // Check that service actually exists
+        const service = await Service.findById(serviceId);
+
+        if (!service) {
+            return res.status(404).json({
+                success: false,
+                message: "Service not found",
+            });
+        }
+
+        // Find user
         const user = await User.findById(req.userId);
 
         if (!user) {
@@ -49,21 +79,42 @@ export const addToWishlist = async (req, res) => {
             });
         }
 
-        if (!user.wishlist.includes(serviceId)) {
-            user.wishlist.push(serviceId);
-            await user.save();
+        // Make sure wishlist is always an array
+        if (!Array.isArray(user.wishlist)) {
+            user.wishlist = [];
         }
 
-        res.status(200).json({
+        // Check if service already exists
+        const alreadyExists = user.wishlist.some(
+            (id) => String(id) === String(serviceId)
+        );
+
+        if (alreadyExists) {
+            return res.status(200).json({
+                success: true,
+                message: "Service already in wishlist",
+                wishlist: user.wishlist,
+            });
+        }
+
+        // Add service
+        user.wishlist.push(serviceId);
+
+        await user.save();
+
+        return res.status(200).json({
             success: true,
             message: "Service added to wishlist",
             wishlist: user.wishlist,
         });
 
     } catch (error) {
-        console.error("Add Wishlist Error:", error.message);
+        console.error(
+            "Add Wishlist Error:",
+            error
+        );
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: "Server error",
         });
@@ -71,18 +122,23 @@ export const addToWishlist = async (req, res) => {
 };
 
 
-// Remove service from wishlist
+// ======================================================
+// REMOVE SERVICE FROM WISHLIST
+// ======================================================
+
 export const removeFromWishlist = async (req, res) => {
     try {
-        const serviceId = Number(req.params.serviceId);
+        const { serviceId } = req.params;
 
-        if (!serviceId) {
+        // Validate MongoDB ObjectId
+        if (!mongoose.Types.ObjectId.isValid(serviceId)) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid service ID",
             });
         }
 
+        // Find user
         const user = await User.findById(req.userId);
 
         if (!user) {
@@ -92,22 +148,31 @@ export const removeFromWishlist = async (req, res) => {
             });
         }
 
+        // Make sure wishlist is always an array
+        if (!Array.isArray(user.wishlist)) {
+            user.wishlist = [];
+        }
+
+        // Remove service
         user.wishlist = user.wishlist.filter(
-            (id) => id !== serviceId
+            (id) => String(id) !== String(serviceId)
         );
 
         await user.save();
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: "Service removed from wishlist",
             wishlist: user.wishlist,
         });
 
     } catch (error) {
-        console.error("Remove Wishlist Error:", error.message);
+        console.error(
+            "Remove Wishlist Error:",
+            error
+        );
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: "Server error",
         });

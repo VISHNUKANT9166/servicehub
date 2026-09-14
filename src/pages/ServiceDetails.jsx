@@ -1,369 +1,340 @@
-import { Link, useParams } from "react-router-dom";
-import services from "../data/services";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+    ArrowLeft,
+    CalendarDays,
+    Clock,
+    MapPin,
+    Loader2,
+    Star,
+} from "lucide-react";
+import toast from "react-hot-toast";
 
 import Navbar from "../components/Navbar/Navbar";
 import Footer from "../components/Footer/Footer";
 
-import {
-    User,
-    Briefcase,
-    MapPin,
-    Star,
-    Phone,
-} from "lucide-react";
+import { getServiceById } from "../services/serviceService";
 
 function ServiceDetails() {
-
     const { id } = useParams();
+    const navigate = useNavigate();
 
-    const service = services.find(
-        (item) => item.id === Number(id)
-    );
-    if (!service) {
+    const [service, setService] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const loadService = async () => {
+            try {
+                setLoading(true);
+
+                const response = await getServiceById(id);
+
+                if (response.success) {
+                    setService(response.service);
+                } else {
+                    toast.error(
+                        response.message || "Unable to load service."
+                    );
+                }
+            } catch (error) {
+                console.error("Load Service Error:", error);
+
+                toast.error(
+                    error.response?.data?.message ||
+                    "Unable to load service."
+                );
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (id) {
+            loadService();
+        }
+    }, [id]);
+
+    if (loading) {
         return (
             <>
                 <Navbar />
 
-                <main className="min-h-screen flex items-center justify-center bg-gray-50">
+                <main className="min-h-[70vh] flex items-center justify-center">
+                    <div className="text-center">
+                        <Loader2
+                            size={42}
+                            className="animate-spin mx-auto text-blue-600"
+                        />
 
-                    <h1 className="text-4xl font-bold text-red-500">
-                        Service Not Found
-                    </h1>
-
+                        <p className="mt-4 text-gray-500">
+                            Loading service...
+                        </p>
+                    </div>
                 </main>
 
                 <Footer />
             </>
         );
     }
-    const similarServices = services
-        .filter(
-            (item) =>
-                item.category === service.category &&
-                item.id !== service.id
-        )
-        .slice(0, 3);
 
+    if (!service) {
+        return (
+            <>
+                <Navbar />
 
+                <main className="min-h-[70vh] flex items-center justify-center px-4">
+                    <div className="text-center">
+                        <h1 className="text-2xl font-bold">
+                            Service not found
+                        </h1>
+
+                        <p className="text-gray-500 mt-2">
+                            This service may no longer be available.
+                        </p>
+
+                        <button
+                            type="button"
+                            onClick={() => navigate(-1)}
+                            className="mt-6 inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-3 rounded-xl font-semibold hover:bg-blue-700 transition"
+                        >
+                            <ArrowLeft size={18} />
+                            Go Back
+                        </button>
+                    </div>
+                </main>
+
+                <Footer />
+            </>
+        );
+    }
+
+    const professional = service.professional;
+    const professionalUser = professional?.user;
 
     return (
         <>
             <Navbar />
 
-            <main className="bg-gray-50 min-h-screen">
+            <main className="bg-gray-50 min-h-screen py-8">
+                <div className="max-w-6xl mx-auto px-4">
 
-                <div className="max-w-7xl mx-auto px-6 py-10">
+                    {/* Back */}
+                    <button
+                        type="button"
+                        onClick={() => navigate(-1)}
+                        className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 transition mb-6"
+                    >
+                        <ArrowLeft size={18} />
+                        Back
+                    </button>
 
-                    {/* Breadcrumb */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-                    <p className="text-gray-500 mb-6">
+                        {/* Main service */}
+                        <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg overflow-hidden">
 
-                        Home /
+                            {service.image ? (
+                                <img
+                                    src={service.image}
+                                    alt={service.title}
+                                    className="w-full h-72 object-cover"
+                                />
+                            ) : (
+                                <div className="w-full h-72 bg-gray-100 flex items-center justify-center">
+                                    <span className="text-gray-400">
+                                        No image available
+                                    </span>
+                                </div>
+                            )}
 
-                        <span className="text-blue-600">
-                            {" "}Services
-                        </span>
+                            <div className="p-6 md:p-8">
 
-                        /
+                                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
 
-                        <span className="font-semibold text-gray-800">
-                            {" "}{service.title}
-                        </span>
+                                    <div>
+                                        <p className="text-blue-600 font-semibold">
+                                            {service.category}
+                                        </p>
 
-                    </p>
+                                        <h1 className="text-3xl font-bold mt-2">
+                                            {service.title}
+                                        </h1>
+                                    </div>
 
-                    {/* Hero Section */}
+                                    <div className="text-left sm:text-right">
+                                        <p className="text-3xl font-bold">
+                                            ₹{service.price}
+                                        </p>
 
-                    <div className="grid lg:grid-cols-2 gap-12 items-start">
+                                        <p className="text-sm text-gray-500">
+                                            per service
+                                        </p>
+                                    </div>
 
-                        {/* Image */}
+                                </div>
 
-                        <div>
+                                {/* Rating */}
+                                <div className="flex items-center gap-2 mt-5">
+                                    <div className="flex items-center gap-1">
+                                        <Star
+                                            size={18}
+                                            className="fill-yellow-400 text-yellow-400"
+                                        />
 
-                            <img
-                                src={service.image}
-                                alt={service.title}
-                                className="w-full h-[500px] object-cover rounded-3xl shadow-lg"
-                            />
+                                        <span className="font-semibold">
+                                            {service.rating ?? 0}
+                                        </span>
+                                    </div>
 
+                                    <span className="text-gray-500">
+                                        ({service.totalReviews ?? 0} reviews)
+                                    </span>
+                                </div>
+
+                                {/* Description */}
+                                {service.description && (
+                                    <div className="mt-8">
+                                        <h2 className="text-xl font-bold">
+                                            About this service
+                                        </h2>
+
+                                        <p className="text-gray-600 mt-3 leading-7">
+                                            {service.description}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Service information */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
+
+                                    <div className="bg-gray-50 rounded-xl p-4">
+                                        <div className="flex items-center gap-3">
+                                            <Clock
+                                                size={20}
+                                                className="text-blue-600"
+                                            />
+
+                                            <div>
+                                                <p className="text-sm text-gray-500">
+                                                    Duration
+                                                </p>
+
+                                                <p className="font-semibold mt-1">
+                                                    {service.duration} minutes
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-gray-50 rounded-xl p-4">
+                                        <div className="flex items-center gap-3">
+                                            <MapPin
+                                                size={20}
+                                                className="text-blue-600"
+                                            />
+
+                                            <div>
+                                                <p className="text-sm text-gray-500">
+                                                    Service Areas
+                                                </p>
+
+                                                <p className="font-semibold mt-1">
+                                                    {service.serviceAreas?.length
+                                                        ? service.serviceAreas.join(", ")
+                                                        : "Not specified"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                {/* Skills */}
+                                {service.skills?.length > 0 && (
+                                    <div className="mt-8">
+                                        <h2 className="text-xl font-bold">
+                                            Skills
+                                        </h2>
+
+                                        <div className="flex flex-wrap gap-2 mt-3">
+                                            {service.skills.map(
+                                                (skill, index) => (
+                                                    <span
+                                                        key={`${service._id}-skill-${index}`}
+                                                        className="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm"
+                                                    >
+                                                        {skill}
+                                                    </span>
+                                                )
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                            </div>
                         </div>
 
-                        {/* Details */}
+                        {/* Booking sidebar */}
+                        <div className="bg-white rounded-2xl shadow-lg p-6 h-fit lg:sticky lg:top-24">
 
-                        <div>
-
-                            <p className="text-blue-600 font-semibold uppercase tracking-wide">
-
-                                {service.category}
-
-                            </p>
-
-                            <h1 className="text-5xl font-bold text-gray-900 mt-2">
-
-                                {service.title}
-
-                            </h1>
-
-                            {/* Rating */}
-
-                            <div className="flex items-center gap-3 mt-6">
-
-                                <Star
-                                    size={22}
-                                    className="text-yellow-500 fill-yellow-500"
-                                />
-
-                                <span className="text-lg font-semibold">
-
-                                    {service.rating}
-
-                                </span>
-
-                                <span className="text-gray-500">
-
-                                    ({service.reviews} Reviews)
-
-                                </span>
-
-                            </div>
-
-                            {/* Professional Info */}
-
-                            <div className="space-y-5 mt-8">
-
-                                <div className="flex items-center gap-3">
-
-                                    <User
-                                        className="text-blue-600"
-                                        size={22}
-                                    />
-
-                                    <span className="text-lg">
-                                        {service.professional}
-                                    </span>
-
-                                </div>
-
-                                <div className="flex items-center gap-3">
-
-                                    <Briefcase
-                                        className="text-blue-600"
-                                        size={22}
-                                    />
-
-                                    <span className="text-lg">
-                                        {service.experience} Years Experience
-                                    </span>
-
-                                </div>
-
-                                <div className="flex items-center gap-3">
-
-                                    <MapPin
-                                        className="text-red-500"
-                                        size={22}
-                                    />
-
-                                    <span className="text-lg">
-                                        {service.city}
-                                    </span>
-
-                                </div>
-
-                                <div className="flex items-center gap-3">
-
-                                    <Phone
-                                        className="text-green-600"
-                                        size={22}
-                                    />
-
-                                    <span className="font-semibold text-green-600">
-                                        {service.availability}
-                                    </span>
-
-                                </div>
-
-                            </div>
-
-                            {/* Price */}
-
-                            <h2 className="text-5xl font-bold text-blue-600 mt-10">
-
-                                ₹{service.price}
-
+                            <h2 className="text-2xl font-bold">
+                                Book this service
                             </h2>
 
                             <p className="text-gray-500 mt-2">
-
-                                Starting Price
-
+                                Choose a convenient date and time for your service.
                             </p>
 
-                            {/* Buttons */}
+                            <div className="border-t my-6" />
 
-                            {/* Buttons */}
+                            {/* Professional */}
+                            <div>
+                                <p className="text-sm text-gray-500">
+                                    Professional
+                                </p>
 
-                            <div className="flex gap-4 mt-10">
+                                <p className="font-semibold mt-1">
+                                    {professionalUser?.fullName ||
+                                        "Professional"}
+                                </p>
 
-                                <Link
-                                    to={`/booking/${service.id}`}
-                                    className="bg-blue-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-blue-700 transition text-center"
-                                >
-                                    Book Now
-                                </Link>
-
-                                <Link
-                                    to={`/contact/${service.id}`}
-                                    className="border border-blue-600 text-blue-600 px-8 py-3 rounded-xl font-semibold hover:bg-blue-50 transition text-center"
-                                >
-                                    Contact
-                                </Link>
-
+                                {professionalUser?.city && (
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        {professionalUser.city}
+                                        {professionalUser.state
+                                            ? `, ${professionalUser.state}`
+                                            : ""}
+                                    </p>
+                                )}
                             </div>
 
-                        </div>
+                            <div className="border-t my-6" />
 
-                    </div>
+                            {/* Price */}
+                            <div className="flex items-center justify-between">
+                                <span className="text-gray-500">
+                                    Service price
+                                </span>
 
-                    {/* About Service */}
+                                <span className="font-bold">
+                                    ₹{service.price}
+                                </span>
+                            </div>
 
-                    <div className="bg-white rounded-2xl shadow-md p-8 mt-12">
-
-                        <h2 className="text-3xl font-bold mb-6">
-
-                            About this Service
-
-                        </h2>
-
-                        <p className="text-gray-600 leading-8 text-lg">
-
-                            {service.description}
-
-                        </p>
-
-                    </div>
-                    {/* Services Included */}
-
-                    <div className="bg-white rounded-2xl shadow-md p-8 mt-10">
-
-                        <h2 className="text-3xl font-bold mb-6">
-                            Services Included
-                        </h2>
-
-                        <div className="grid md:grid-cols-2 gap-4">
-
-                            {service.includes.map((item, index) => (
-
-                                <div
-                                    key={index}
-                                    className="flex items-center gap-3 bg-gray-50 rounded-xl p-4"
-                                >
-
-                                    <span className="text-green-600 text-xl">
-                                        ✔
-                                    </span>
-
-                                    <span className="text-gray-700">
-                                        {item}
-                                    </span>
-
-                                </div>
-
-                            ))}
+                            {/* Book */}
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    navigate(`/booking/${service._id}`)
+                                }
+                                className="w-full mt-6 flex items-center justify-center gap-2 bg-blue-600 text-white px-5 py-3 rounded-xl font-semibold hover:bg-blue-700 transition"
+                            >
+                                <CalendarDays size={19} />
+                                Book Service
+                            </button>
 
                         </div>
-
                     </div>
-                    {/* Customer Reviews */}
-
-                    <div className="bg-white rounded-2xl shadow-md p-8 mt-10">
-
-                        <h2 className="text-3xl font-bold mb-6">
-                            Customer Reviews
-                        </h2>
-
-                        <div className="space-y-6">
-
-                            {service.reviewsData.map((review) => (
-
-                                <div
-                                    key={review.id}
-                                    className="border-b pb-6 last:border-none"
-                                >
-
-                                    <div className="flex items-center justify-between">
-
-                                        <h3 className="text-lg font-semibold">
-                                            {review.name}
-                                        </h3>
-
-                                        <span className="text-yellow-500 font-semibold">
-                                            ⭐ {review.rating}
-                                        </span>
-
-                                    </div>
-
-                                    <p className="text-gray-600 mt-3">
-                                        {review.comment}
-                                    </p>
-
-                                </div>
-
-                            ))}
-
-                        </div>
-
-                    </div>
-                    {/* Similar Services */}
-
-                    <div className="mt-12">
-
-                        <h2 className="text-3xl font-bold mb-6">
-                            Similar Services
-                        </h2>
-
-                        <div className="grid md:grid-cols-3 gap-6">
-
-                            {similarServices.map((item) => (
-
-                                <Link
-                                    key={item.id}
-                                    to={`/services/${item.id}`}
-                                    className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition block"
-                                >
-
-                                    <img
-                                        src={item.image}
-                                        alt={item.title}
-                                        className="w-full h-48 object-cover"
-                                    />
-
-                                    <div className="p-5">
-
-                                        <h3 className="text-xl font-bold">
-                                            {item.title}
-                                        </h3>
-
-                                        <p className="text-gray-500 mt-2">
-                                            {item.city}
-                                        </p>
-
-                                        <p className="text-blue-600 font-bold mt-4">
-                                            ₹{item.price}
-                                        </p>
-
-                                    </div>
-
-                                </Link>
-
-                            ))}
-
-                        </div>
-
-                    </div>
-
                 </div>
-
             </main>
 
             <Footer />

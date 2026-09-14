@@ -1,4 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
+
 import {
     LayoutDashboard,
     CalendarDays,
@@ -7,11 +8,12 @@ import {
     Settings,
     LogOut,
 } from "lucide-react";
+
 import { useAuth } from "../../context/AuthContext";
 import toast from "react-hot-toast";
 
 function DashboardSidebar() {
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
     const navigate = useNavigate();
 
     const handleLogout = () => {
@@ -22,7 +24,8 @@ function DashboardSidebar() {
         navigate("/login");
     };
 
-    const menuItems = [
+    // Menu for normal users
+    const userMenuItems = [
         {
             name: "Dashboard",
             path: "/dashboard",
@@ -50,15 +53,54 @@ function DashboardSidebar() {
         },
     ];
 
+    // Menu for professionals
+    const professionalMenuItems = [
+        {
+            name: "Dashboard",
+            path: "/professional/dashboard",
+            icon: <LayoutDashboard size={20} />,
+        },
+        {
+            name: "My Services",
+            path: "/professional/services",
+            icon: <Settings size={20} />,
+        },
+        {
+            name: "Bookings",
+            path: "/professional/bookings",
+            icon: <CalendarDays size={20} />,
+        },
+        {
+            name: "Profile",
+            path: "/professional/profile",
+            icon: <User size={20} />,
+        },
+        {
+            name: "Settings",
+            path: "/professional/settings",
+            icon: <Settings size={20} />,
+        },
+    ];
+
+    // Select menu according to user role
+    const menuItems =
+        user?.role === "professional"
+            ? professionalMenuItems
+            : userMenuItems;
+
     return (
         <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-24">
 
+            {/* Logo */}
             <h2 className="text-2xl font-bold mb-8 text-blue-600">
                 ServiceHub
             </h2>
 
+            {/* Navigation */}
             <nav className="space-y-2">
+
                 {menuItems.map((item) => (
+
                     <NavLink
                         key={item.name}
                         to={item.path}
@@ -70,17 +112,28 @@ function DashboardSidebar() {
                         }
                     >
                         {item.icon}
-                        <span>{item.name}</span>
+
+                        <span>
+                            {item.name}
+                        </span>
+
                     </NavLink>
+
                 ))}
+
             </nav>
 
+            {/* Logout */}
             <button
                 onClick={handleLogout}
                 className="flex items-center gap-3 w-full px-4 py-3 mt-8 rounded-xl text-red-600 hover:bg-red-50 transition"
             >
                 <LogOut size={20} />
-                <span>Logout</span>
+
+                <span>
+                    Logout
+                </span>
+
             </button>
 
         </div>

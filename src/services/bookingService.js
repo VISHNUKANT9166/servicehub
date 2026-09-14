@@ -1,44 +1,120 @@
 import api from "./api";
 
-// Get bookings of logged-in user
+
+// =====================================================
+// GET MY BOOKINGS
+// =====================================================
+
 export const getMyBookings = async () => {
-    const response = await api.get("/bookings");
+    const response =
+        await api.get("/bookings");
 
     return response.data;
 };
-// Get booking statistics of logged-in user
+
+
+// =====================================================
+// GET BOOKING STATS
+// =====================================================
+
 export const getBookingStats = async () => {
-    const response = await api.get("/bookings/stats");
+    const response =
+        await api.get("/bookings/stats");
 
     return response.data;
 };
 
-// Create a new booking
-export const createBooking = async (bookingData) => {
-    const response = await api.post(
-        "/bookings",
-        bookingData
-    );
 
-    return response.data;
-};
-// Cancel a booking
-export const cancelBooking = async (bookingId) => {
-    const response = await api.put(
-        `/bookings/${bookingId}/cancel`
-    );
+// =====================================================
+// CREATE BOOKING
+// =====================================================
 
-    return response.data;
-};
-// Reschedule an existing booking
-export const rescheduleBooking = async (
-    id,
+export const createBooking = async (
     bookingData
 ) => {
-    const response = await api.put(
-        `/bookings/${id}/reschedule`,
-        bookingData
-    );
+    const response =
+        await api.post(
+            "/bookings",
+            bookingData
+        );
+
+    return response.data;
+};
+
+
+// =====================================================
+// CANCEL BOOKING
+// =====================================================
+
+export const cancelBooking = async (
+    bookingId
+) => {
+    const response =
+        await api.put(
+            `/bookings/${bookingId}/cancel`
+        );
+
+    return response.data;
+};
+
+
+// =====================================================
+// RESCHEDULE BOOKING
+// =====================================================
+
+export const rescheduleBooking = async (
+    bookingId,
+    bookingData
+) => {
+    const response =
+        await api.put(
+            `/bookings/${bookingId}/reschedule`,
+            bookingData
+        );
+
+    return response.data;
+};
+
+// =====================================================
+// GET PROFESSIONAL BOOKING STATS
+// =====================================================
+
+export const getProfessionalBookingStats = async () => {
+    const response =
+        await api.get(
+            "/bookings/professional/stats"
+        );
+
+    return response.data;
+};
+
+
+// =====================================================
+// GET PROFESSIONAL BOOKINGS
+// =====================================================
+
+export const getProfessionalBookings = async () => {
+    const response =
+        await api.get(
+            "/bookings/professional"
+        );
+
+    return response.data;
+};
+
+// =====================================================
+// UPDATE BOOKING STATUS
+// =====================================================
+
+export const updateBookingStatus = async (
+    bookingId,
+    status
+) => {
+    const response =
+        await api.patch(
+            `/bookings/${bookingId}/status`,
+            { status }
+        );
 
     return response.data;
 };

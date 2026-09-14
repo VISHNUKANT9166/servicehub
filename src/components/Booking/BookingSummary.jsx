@@ -35,7 +35,7 @@ function BookingSummary({ service }) {
 
                 <div className="flex items-center gap-3">
                     <User className="text-blue-600" size={20} />
-                    <span>{service.professional}</span>
+                    <span>{service.professional?.user?.fullName || "Professional"}</span>
                 </div>
 
                 <div className="flex items-center gap-3">

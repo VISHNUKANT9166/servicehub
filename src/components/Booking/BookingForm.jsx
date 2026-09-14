@@ -103,14 +103,15 @@ function BookingForm({ service }) {
 
             // Data sent to backend
             const bookingData = {
-                service: service.id,
+                service: service._id,
                 serviceTitle: service.title,
-                professional: service.professional,
+                professional: service.professional?._id,
                 bookingDate: formData.date,
                 bookingTime: formData.time,
                 address: formData.address,
-                city: service.city,
+                city: service.professional?.user?.city || "",
                 phone: formData.phone,
+                notes: formData.notes,
                 price: service.price,
             };
 
@@ -180,7 +181,7 @@ function BookingForm({ service }) {
                         </h4>
 
                         <p className="text-gray-600">
-                            {service.professional}
+                            {service.professional?.user?.fullName || "Professional"}
                         </p>
 
                         <p className="text-blue-600 font-bold mt-1">

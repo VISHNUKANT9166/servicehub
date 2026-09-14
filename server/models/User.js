@@ -62,10 +62,13 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: "",
         },
-        wishlist: {
-            type: [Number],
-            default: [],
-        },
+
+        wishlist: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Service",
+            },
+        ],
     },
     {
         timestamps: true,

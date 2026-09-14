@@ -90,8 +90,14 @@ function Login() {
                 // Show only one success toast
                 toast.success("Login Successful!");
 
-                // Redirect to dashboard
-                navigate("/dashboard");
+                // Redirect according to user role
+                if (data.user.role === "admin") {
+                    navigate("/admin/professionals");
+                } else if (data.user.role === "professional") {
+                    navigate("/professional/dashboard");
+                } else {
+                    navigate("/dashboard");
+                }
             }
         } catch (error) {
             console.error("Login Error:", error);
