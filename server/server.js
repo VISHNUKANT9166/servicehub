@@ -16,6 +16,7 @@ import notificationRoutes from "./routes/NotificationRoutes.js";
 import professionalRoutes from "./routes/professionalRoutes.js";
 import serviceRoutes from "./routes/serviceRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import reviewRoutes from "./routes/reviewRoutes.js";
 
 // =====================================================
 // MIDDLEWARE
@@ -23,20 +24,17 @@ import adminRoutes from "./routes/adminRoutes.js";
 
 import uploadErrorMiddleware from "./middleware/uploadErrorMiddleware.js";
 
-
 // =====================================================
 // CONFIGURATION
 // =====================================================
 
 dotenv.config();
 
-
 // =====================================================
 // APP INITIALIZATION
 // =====================================================
 
 const app = express();
-
 
 // =====================================================
 // GLOBAL MIDDLEWARE
@@ -52,14 +50,12 @@ app.use(
     })
 );
 
-
 // Parse JSON requests
 app.use(
     express.json({
         limit: "10mb",
     })
 );
-
 
 // Parse URL encoded requests
 app.use(
@@ -69,21 +65,17 @@ app.use(
     })
 );
 
-
 // =====================================================
 // HEALTH CHECK
 // =====================================================
 
 app.get("/", (req, res) => {
-
     res.status(200).json({
         success: true,
         message:
             "ServiceHub Backend is Running",
     });
-
 });
-
 
 // =====================================================
 // API ROUTES
@@ -95,13 +87,11 @@ app.use(
     authRoutes
 );
 
-
 // Users
 app.use(
     "/api/users",
     userRoutes
 );
-
 
 // Bookings
 app.use(
@@ -109,13 +99,11 @@ app.use(
     bookingRoutes
 );
 
-
 // Wishlist
 app.use(
     "/api/wishlist",
     wishlistRoutes
 );
-
 
 // Notifications
 app.use(
@@ -123,13 +111,11 @@ app.use(
     notificationRoutes
 );
 
-
 // Professionals
 app.use(
     "/api/professionals",
     professionalRoutes
 );
-
 
 // Services
 app.use(
@@ -137,13 +123,17 @@ app.use(
     serviceRoutes
 );
 
-
 // Admin
 app.use(
     "/api/admin",
     adminRoutes
 );
 
+// Reviews
+app.use(
+    "/api/reviews",
+    reviewRoutes
+);
 
 // =====================================================
 // UPLOAD ERROR HANDLER
@@ -156,43 +146,35 @@ app.use(
     uploadErrorMiddleware
 );
 
-
 // =====================================================
 // 404 HANDLER
 // =====================================================
 
 app.use((req, res) => {
-
     res.status(404).json({
         success: false,
 
         message:
             `Route not found: ${req.method} ${req.originalUrl}`,
     });
-
 });
-
 
 // =====================================================
 // GLOBAL ERROR HANDLER
 // =====================================================
 
 app.use((err, req, res, next) => {
-
     console.error(
         "Global Error:",
         err
     );
-
 
     const statusCode =
         err.statusCode ||
         err.status ||
         500;
 
-
     res.status(statusCode).json({
-
         success: false,
 
         message:
@@ -202,11 +184,8 @@ app.use((err, req, res, next) => {
                     err.message ||
                     "Internal server error"
                 ),
-
     });
-
 });
-
 
 // =====================================================
 // DATABASE + SERVER START
@@ -215,36 +194,25 @@ app.use((err, req, res, next) => {
 const PORT =
     process.env.PORT || 5000;
 
-
 const startServer = async () => {
-
     try {
-
         // Connect Database
         await connectDB();
 
-
         // Start Server
         app.listen(PORT, () => {
-
             console.log(
                 `🚀 ServiceHub Server running on port ${PORT}`
             );
-
         });
-
     } catch (error) {
-
         console.error(
             "❌ Failed to start server:",
             error
         );
 
         process.exit(1);
-
     }
-
 };
-
 
 startServer();

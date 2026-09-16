@@ -45,6 +45,8 @@ import MyBookings from "./pages/MyBookings";
 import ProfessionalDashboard from "./pages/ProfessionalDashboard";
 import ProfessionalServices from "./pages/ProfessionalServices";
 import ProfessionalBookings from "./pages/ProfessionalBookings";
+import ProfessionalProfile from "./pages/ProfessionalProfile";
+import ProfessionalSettings from "./pages/ProfessionalSettings";
 import CreateService from "./pages/CreateService";
 import EditService from "./pages/EditService";
 
@@ -223,6 +225,34 @@ function App() {
           element={
             <ProfessionalRoute>
               <ProfessionalDashboard />
+            </ProfessionalRoute>
+          }
+        />
+
+
+        {/* =================================================
+                    PROFESSIONAL PROFILE
+            ================================================= */}
+
+        <Route
+          path="/professional/profile"
+          element={
+            <ProfessionalRoute>
+              <ProfessionalProfile />
+            </ProfessionalRoute>
+          }
+        />
+
+
+        {/* =================================================
+                    PROFESSIONAL SETTINGS
+            ================================================= */}
+
+        <Route
+          path="/professional/settings"
+          element={
+            <ProfessionalRoute>
+              <ProfessionalSettings />
             </ProfessionalRoute>
           }
         />

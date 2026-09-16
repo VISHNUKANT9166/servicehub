@@ -12,11 +12,18 @@ import {
 } from "../services/bookingService";
 
 import {
+    getProfessionalReviews,
+} from "../services/reviewService";
+
+import {
     BriefcaseBusiness,
     CalendarDays,
     Clock,
     CheckCircle,
+    Star,
+    Loader2,
 } from "lucide-react";
+
 
 function ProfessionalDashboard() {
 
@@ -24,18 +31,31 @@ function ProfessionalDashboard() {
     // SERVICES
     // =====================================================
 
-    const [services, setServices] = useState([]);
+    const [services, setServices] =
+        useState([]);
 
 
     // =====================================================
     // BOOKING STATISTICS
     // =====================================================
 
-    const [bookingStats, setBookingStats] = useState({
-        total: 0,
-        pending: 0,
-        completed: 0,
-    });
+    const [bookingStats, setBookingStats] =
+        useState({
+            total: 0,
+            pending: 0,
+            completed: 0,
+        });
+
+
+    // =====================================================
+    // REVIEWS
+    // =====================================================
+
+    const [reviews, setReviews] =
+        useState([]);
+
+    const [reviewsLoading, setReviewsLoading] =
+        useState(true);
 
 
     // =====================================================
@@ -44,51 +64,142 @@ function ProfessionalDashboard() {
 
     useEffect(() => {
 
-        const fetchDashboardData = async () => {
+        const fetchDashboardData =
+            async () => {
 
-            try {
+                try {
 
-                // -------------------------------------------------
-                // Get professional services
-                // -------------------------------------------------
+                    // -------------------------------------------------
+                    // Get professional services
+                    // -------------------------------------------------
 
-                const servicesData =
-                    await getMyServices();
+                    const servicesData =
+                        await getMyServices();
 
-                if (servicesData.success) {
+                    let professionalServices = [];
 
-                    setServices(
-                        servicesData.services || []
+                    if (
+                        servicesData.success
+                    ) {
+
+                        professionalServices =
+                            Array.isArray(
+                                servicesData.services
+                            )
+                                ? servicesData.services
+                                : [];
+
+                        setServices(
+                            professionalServices
+                        );
+
+                    }
+
+
+                    // -------------------------------------------------
+                    // Get professional booking statistics
+                    // -------------------------------------------------
+
+                    const bookingData =
+                        await getProfessionalBookingStats();
+
+                    if (
+                        bookingData.success
+                    ) {
+
+                        setBookingStats(
+                            bookingData.stats
+                        );
+
+                    }
+
+
+                    // -------------------------------------------------
+                    // Get professional reviews
+                    // -------------------------------------------------
+
+                    /*
+                     * The Service response contains the professional
+                     * reference. Since a professional must have a
+                     * service before receiving a booking/review,
+                     * the professional ID can safely be obtained
+                     * from the professional's service.
+                     */
+
+                    const professional =
+                        professionalServices[0]
+                            ?.professional;
+
+                    const professionalId =
+                        professional?._id ||
+                        professional;
+
+
+                    if (
+                        professionalId
+                    ) {
+
+                        try {
+
+                            const reviewData =
+                                await getProfessionalReviews(
+                                    professionalId
+                                );
+
+
+                            if (
+                                reviewData.success
+                            ) {
+
+                                setReviews(
+                                    Array.isArray(
+                                        reviewData.reviews
+                                    )
+                                        ? reviewData.reviews
+                                        : []
+                                );
+
+                            } else {
+
+                                setReviews([]);
+
+                            }
+
+                        } catch (
+                        reviewError
+                        ) {
+
+                            console.error(
+                                "Professional Reviews Error:",
+                                reviewError
+                            );
+
+                            setReviews([]);
+
+                        }
+
+                    } else {
+
+                        setReviews([]);
+
+                    }
+
+                } catch (error) {
+
+                    console.error(
+                        "Professional Dashboard Error:",
+                        error
+                    );
+
+                } finally {
+
+                    setReviewsLoading(
+                        false
                     );
 
                 }
 
-
-                // -------------------------------------------------
-                // Get professional booking statistics
-                // -------------------------------------------------
-
-                const bookingData =
-                    await getProfessionalBookingStats();
-
-                if (bookingData.success) {
-
-                    setBookingStats(
-                        bookingData.stats
-                    );
-
-                }
-
-            } catch (error) {
-
-                console.error(
-                    "Professional Dashboard Error:",
-                    error
-                );
-
-            }
-
-        };
+            };
 
 
         fetchDashboardData();
@@ -97,7 +208,91 @@ function ProfessionalDashboard() {
 
 
     // =====================================================
-    // UI
+    // PROFESSIONAL RATING
+    // =====================================================
+
+    const professionalRating =
+        reviews.length > 0
+            ? (
+                reviews.reduce(
+                    (
+                        total,
+                        review
+                    ) =>
+                        total +
+                        Number(
+                            review.rating || 0
+                        ),
+                    0
+                ) /
+                reviews.length
+            ).toFixed(1)
+            : "0.0";
+
+
+    // =====================================================
+    // FORMAT REVIEW DATE
+    // =====================================================
+
+    const formatReviewDate =
+        (date) => {
+
+            if (!date) {
+                return "";
+            }
+
+            return new Date(
+                date
+            ).toLocaleDateString(
+                "en-IN",
+                {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                }
+            );
+
+        };
+
+
+    // =====================================================
+    // REVIEW STARS
+    // =====================================================
+
+    const renderStars =
+        (rating) => {
+
+            const numericRating =
+                Number(rating) || 0;
+
+            return (
+                <div className="flex items-center gap-1">
+
+                    {[1, 2, 3, 4, 5].map(
+                        (star) => (
+
+                            <Star
+                                key={star}
+                                size={17}
+                                className={
+                                    star <=
+                                        numericRating
+                                        ? "fill-yellow-400 text-yellow-400"
+                                        : "text-gray-300"
+                                }
+                            />
+
+                        )
+                    )}
+
+                </div>
+            );
+
+        };
+
+
+    // =====================================================
+    // RENDER
     // =====================================================
 
     return (
@@ -105,12 +300,14 @@ function ProfessionalDashboard() {
             <Navbar />
 
             <DashboardLayout
-                sidebar={<DashboardSidebar />}
+                sidebar={
+                    <DashboardSidebar />
+                }
             >
 
                 {/* =================================================
-                    HEADER
-                ================================================= */}
+                            HEADER
+                    ================================================= */}
 
                 <div className="bg-white rounded-2xl shadow-lg p-6">
 
@@ -126,15 +323,15 @@ function ProfessionalDashboard() {
 
 
                 {/* =================================================
-                    STATISTICS
-                ================================================= */}
+                            STATISTICS
+                    ================================================= */}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mt-8">
 
 
                     {/* =================================================
-                        TOTAL SERVICES
-                    ================================================= */}
+                                TOTAL SERVICES
+                        ================================================= */}
 
                     <div className="bg-white rounded-2xl shadow-lg p-6 flex items-center justify-between">
 
@@ -163,8 +360,8 @@ function ProfessionalDashboard() {
 
 
                     {/* =================================================
-                        TOTAL BOOKINGS
-                    ================================================= */}
+                                TOTAL BOOKINGS
+                        ================================================= */}
 
                     <div className="bg-white rounded-2xl shadow-lg p-6 flex items-center justify-between">
 
@@ -193,8 +390,8 @@ function ProfessionalDashboard() {
 
 
                     {/* =================================================
-                        PENDING BOOKINGS
-                    ================================================= */}
+                                PENDING BOOKINGS
+                        ================================================= */}
 
                     <div className="bg-white rounded-2xl shadow-lg p-6 flex items-center justify-between">
 
@@ -223,8 +420,8 @@ function ProfessionalDashboard() {
 
 
                     {/* =================================================
-                        COMPLETED BOOKINGS
-                    ================================================= */}
+                                COMPLETED BOOKINGS
+                        ================================================= */}
 
                     <div className="bg-white rounded-2xl shadow-lg p-6 flex items-center justify-between">
 
@@ -251,6 +448,225 @@ function ProfessionalDashboard() {
 
                     </div>
 
+                </div>
+
+
+                {/* =================================================
+                            RATING SUMMARY
+                    ================================================= */}
+
+                <div className="bg-white rounded-2xl shadow-lg p-6 mt-8">
+
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+
+                        <div>
+
+                            <h2 className="text-2xl font-bold text-gray-900">
+                                Your Ratings & Reviews
+                            </h2>
+
+                            <p className="text-gray-500 mt-1">
+                                See what customers think about your services.
+                            </p>
+
+                        </div>
+
+
+                        <div className="flex items-center gap-3">
+
+                            <Star
+                                size={25}
+                                className="fill-yellow-400 text-yellow-400"
+                            />
+
+                            <div>
+
+                                <p className="text-2xl font-bold text-gray-900">
+                                    {professionalRating}
+                                </p>
+
+                                <p className="text-sm text-gray-500">
+                                    {reviews.length}{" "}
+                                    {reviews.length === 1
+                                        ? "Review"
+                                        : "Reviews"}
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    {/* =================================================
+                                REVIEWS LOADING
+                        ================================================= */}
+
+                    {reviewsLoading && (
+
+                        <div className="flex justify-center items-center py-10">
+
+                            <Loader2
+                                size={30}
+                                className="animate-spin text-blue-600"
+                            />
+
+                        </div>
+
+                    )}
+
+
+                    {/* =================================================
+                                NO REVIEWS
+                        ================================================= */}
+
+                    {!reviewsLoading &&
+                        reviews.length === 0 && (
+
+                            <div className="bg-gray-50 rounded-xl p-8 text-center mt-5">
+
+                                <Star
+                                    size={38}
+                                    className="mx-auto text-gray-300 mb-3"
+                                />
+
+                                <h3 className="font-semibold text-gray-700">
+                                    No reviews yet
+                                </h3>
+
+                                <p className="text-gray-500 text-sm mt-1">
+                                    Customer reviews will appear here after completed bookings.
+                                </p>
+
+                            </div>
+
+                        )}
+
+
+                    {/* =================================================
+                                REVIEWS LIST
+                        ================================================= */}
+
+                    {!reviewsLoading &&
+                        reviews.length > 0 && (
+
+                            <div className="space-y-4 mt-6">
+
+                                {reviews.map(
+                                    (review) => (
+
+                                        <div
+                                            key={
+                                                review._id
+                                            }
+                                            className="border border-gray-100 rounded-xl p-5 bg-gray-50"
+                                        >
+
+                                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+
+
+                                                {/* CUSTOMER */}
+
+                                                <div className="flex items-center gap-3">
+
+                                                    {review.user
+                                                        ?.profileImage ? (
+
+                                                        <img
+                                                            src={
+                                                                review.user
+                                                                    .profileImage
+                                                            }
+                                                            alt={
+                                                                review.user
+                                                                    ?.fullName ||
+                                                                "Customer"
+                                                            }
+                                                            className="w-10 h-10 rounded-full object-cover"
+                                                        />
+
+                                                    ) : (
+
+                                                        <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+
+                                                            {(
+                                                                review.user
+                                                                    ?.fullName ||
+                                                                "Customer"
+                                                            )
+                                                                .charAt(
+                                                                    0
+                                                                )
+                                                                .toUpperCase()}
+
+                                                        </div>
+
+                                                    )}
+
+
+                                                    <div>
+
+                                                        <p className="font-semibold text-gray-900">
+                                                            {
+                                                                review.user
+                                                                    ?.fullName ||
+                                                                "Customer"
+                                                            }
+                                                        </p>
+
+                                                        <p className="text-xs text-gray-500 mt-0.5">
+                                                            {formatReviewDate(
+                                                                review.createdAt
+                                                            )}
+                                                        </p>
+
+                                                    </div>
+
+                                                </div>
+
+
+                                                {/* RATING */}
+
+                                                {renderStars(
+                                                    review.rating
+                                                )}
+
+                                            </div>
+
+
+                                            {/* SERVICE */}
+
+                                            {review.service
+                                                ?.title && (
+
+                                                    <p className="text-xs text-blue-600 font-medium mt-3">
+                                                        Service:{" "}
+                                                        {
+                                                            review.service
+                                                                .title
+                                                        }
+                                                    </p>
+
+                                                )}
+
+
+                                            {/* COMMENT */}
+
+                                            <p className="text-gray-700 mt-3 leading-6">
+                                                {
+                                                    review.comment
+                                                }
+                                            </p>
+
+                                        </div>
+
+                                    )
+                                )}
+
+                            </div>
+
+                        )}
 
                 </div>
 
